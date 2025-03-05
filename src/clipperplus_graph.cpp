@@ -156,8 +156,8 @@ const Eigen::MatrixXd &Graph::get_adj_matrix() const
     return adj_matrix;
 }
 
-const std::unordered_map<Node, int>& get_global_to_local() const { return global_to_local; }
-const std::vector<Node>& get_local_to_global() const { return local_to_global; }
+const std::unordered_map<Node, int>&Graph::get_global_to_local() const { return global_to_local; }
+const std::vector<Node>&Graph::get_local_to_global() const { return local_to_global; }
 
 void Graph::addGhostEdge(Node u, Node v, const std::vector<int> &part)
 {
