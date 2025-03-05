@@ -1,21 +1,46 @@
 
 #include "clipperplus/clipperplus_graph.h"
-
+#include "clipperplus/parmetis_partition.h"
 
 namespace clipperplus
 {
 
 
-Graph::Graph(Eigen::MatrixXd adj) : adj_matrix(std::move(adj)), adj_list(adj_matrix.rows())
-{
-    int nnodes = adj_matrix.rows();
-    for(int i = 0; i < nnodes; ++i) {
-        for(int j = 0; j < nnodes; ++j) {
-            if(adj_matrix(i, j) != 0) {
-                adj_list[i].push_back(j);
+//Graph::Graph(Eigen::MatrixXd adj) : adj_matrix(std::move(adj)), adj_list(adj_matrix.rows())
+//{
+  //  int nnodes = adj_matrix.rows();
+    //for(int i = 0; i < nnodes; ++i) {
+      //  for(int j = 0; j < nnodes; ++j) {
+        //    if(adj_matrix(i, j) != 0) {
+          //      adj_list[i].push_back(j);
+           // }
+       // }
+    //}
+//}
+Graph::Graph(Eigen::MatrixXd adj) : adj_matrix(std::move(adj)), adj_list(adj_matrix.rows()) {
+    std::vector<int> part;
+    partitionGraphParMETIS(adj_matrix, num_procs, part);
+
+    
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
+    for (int i = 0; i < adj_matrix.rows(); ++i) {
+        if (part[i] == rank) {
+
+            local_to_global.push_back(i);
+            global_to_local[i] = local_to_global.size() - 1;		
+            for (int j = 0; j < adj_matrix.cols(); ++j) {
+                if (adj_matrix(i, j) != 0) {
+                    if (part[j] == rank) {
+                        adj_list[i].push_back(j);
+                    } else {
+                        addGhostEdge(i, j,part);
+                    }
+                }
             }
         }
     }
+    syncGhostNodes();
 }
 
 
@@ -131,7 +156,37 @@ const Eigen::MatrixXd &Graph::get_adj_matrix() const
     return adj_matrix;
 }
 
+const std::unordered_map<Node, int>& get_global_to_local() const { return global_to_local; }
+const std::vector<Node>& get_local_to_global() const { return local_to_global; }
 
+void Graph::addGhostEdge(Node u, Node v, const std::vector<int> &part)
+{
+    if (ghost_nodes.find(v) == ghost_nodes.end())
+    {
+        int ghost_local_id = local_to_global.size();
+        ghost_nodes[v] = ghost_local_id;
+        local_to_global.push_back(v);
+        global_to_local[v] = ghost_local_id;
+    }
+    adj_list[global_to_local[u]].push_back(global_to_local[v]);
+}
+
+
+void Graph::syncGhostNodes()
+{
+    std::vector<int> ghost_owners(num_procs, -1);
+
+    for (const auto &[global, local] : ghost_nodes)
+    {
+        int owner_proc = global % num_procs;
+        if (owner_proc != rank)
+        {
+            MPI_Send(&global, 1, MPI_INT, owner_proc, 0, MPI_COMM_WORLD);
+            MPI_Recv(&ghost_owners[owner_proc], 1, MPI_INT, owner_proc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+    }
+
+}
 void Graph::calculate_kcores() const
 {
     int n = size();
@@ -198,5 +253,6 @@ void Graph::calculate_kcores() const
 
 
 }
+
 
 
