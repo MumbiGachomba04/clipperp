@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <Eigen/Dense>
+#include <mpi.h>
 
 #include "clipperplus/clique_optimization.h"
 #include "clipperplus/clipperplus_heuristic.h"
@@ -20,6 +21,8 @@ enum class CERTIFICATE
     CHROMATIC_BOUND
 };
 
-std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph);
+std::pair<std::vector<Node>, CERTIFICATE> find_clique_dist(const Graph &local_graph, 
+                                                                 const std::unordered_map<Node, int> &global_to_local, 
+                                                                 MPI_Comm comm);
 
 } 

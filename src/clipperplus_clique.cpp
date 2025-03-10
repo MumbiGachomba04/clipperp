@@ -12,7 +12,7 @@ namespace clipperplus
 
 
 std::pair<std::vector<Node>, CERTIFICATE> find_clique_dist(const Graph &local_graph, 
-                                                                 const std::vector<int> &global_to_local, 
+                                                                 const std::unordered_map<Node, int> &global_to_local, 
                                                                  MPI_Comm comm)
 {   
 

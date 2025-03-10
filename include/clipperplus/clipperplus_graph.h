@@ -37,8 +37,12 @@ public:
     int max_core_number() const;
     const std::vector<int> &get_core_numbers() const;
     const std::vector<Node> &get_core_ordering() const;
-    
+    const std::vector<Node> &get_local_to_global() const;
+    const std::unordered_map<Node, int> &get_global_to_local() const;    
     const Eigen::MatrixXd &get_adj_matrix() const;
+    
+    void addGhostEdge(Node u, Node v, const std::vector<int> &part);
+    void syncGhostNodes();
 
 private:
     void calculate_kcores() const;
@@ -49,6 +53,12 @@ private:
 
     mutable std::vector<Node> kcore_ordering;
     mutable std::vector<int> kcore;
+    int num_procs;  
+    int rank;       
+
+    mutable std::vector<Node> local_to_global;                     
+    mutable std::unordered_map<Node, int> global_to_local;         
+    std::unordered_map<Node, int> ghost_nodes;
 };
 
 
