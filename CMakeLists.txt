@@ -21,7 +21,7 @@ option(DEBUG_OPTIM_FLAG "Enable debugging clipper optimization" ON)
 option(BUILD_PMC_HEU "Build PMC heuristic" ON)
 option(BUILD_BINDINGS_MATLAB "Build MATLAB bindings" OFF)
 option(BUILD_BINDINGS_PYTHON "Build Python bindings" OFF)
-option(BUILD_TESTS "Build testsuite" ON)
+option(BUILD_TESTS "Build testsuite" OFF)
 
 
 ###############################################################################
