@@ -38,7 +38,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     u0.normalize();
 
     // Parallel computation of maximum clique
-    MPI_Init(NULL); 
+    MPI_Init(NULL,NULL); 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
