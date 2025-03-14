@@ -4,6 +4,7 @@
 #include <chrono>
 #include <Eigen/Dense>
 #include <mpi.h>
+#include <metis.h>
 
 #include "clipperplus/clique_optimization.h"
 #include "clipperplus/clipperplus_heuristic.h"

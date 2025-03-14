@@ -1,8 +1,8 @@
 #include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
-#include <mpi.h>
 
-namespace clipperplus 
+
+namespace clipperplus
 {
 
 std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
@@ -17,7 +17,6 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         return {heuristic_clique, CERTIFICATE::HEURISTIC};
     }
 
-    // Nodes filtered based on core number . also done in serial
     std::vector<int> core_number = graph.get_core_numbers();
     std::vector<int> keep, keep_pos(n, -1);
     for (Node i = 0, j = 0; i < n; ++i) {
@@ -26,59 +25,67 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
             keep_pos[i] = j++;
         }
     }
-    std::cout<< "Keep size : " << keep.size() << std::endl;
 
     Eigen::MatrixXd M_pruned = graph.get_adj_matrix()(keep, keep);
     M_pruned.diagonal().setOnes();
-
     Eigen::VectorXd u0 = Eigen::VectorXd::Ones(keep.size());
     for (auto v : heuristic_clique) {
         u0(keep_pos[v]) = 0;
     }
     u0.normalize();
 
-    // Parallel computation of maximum clique
-    MPI_Init(NULL,NULL); 
+    MPI_Init(NULL, NULL);
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
-    // Distribute graph partitions 
-    int rows_per_proc = keep.size() / num_procs;
-    int rest = keep.size() % num_procs; // remainder
-    
-    std::vector<int> send_counts(num_procs, rows_per_proc);
-    for (int i = 0; i < rest; i++) {
-        send_counts[i]++; // Distribute remainder rows to first processes
+    std::vector<int> partition(keep.size(), 0);
+    std::vector<int> xadj, adjncy;
+
+    if (rank == 0)
+    {
+        // Convert graph to METIS format
+        graph.to_csr(xadj, adjncy);
+        
+        // Partition the graph using METIS
+        idx_t n_vertices = keep.size();
+        idx_t n_constraints = 1;
+        idx_t n_parts = num_procs;
+        idx_t objval;
+        std::vector<idx_t> part(n_vertices);
+
+        METIS_PartGraphKway(&n_vertices, &n_constraints, xadj.data(), adjncy.data(),
+                            NULL, NULL, NULL, &n_parts, NULL, NULL, NULL, &objval, part.data());
+
+        partition.assign(part.begin(), part.end());
     }
 
-    std::vector<int> displacements(num_procs, 0); //Update row numbers based on displacements 
-    for (int i = 1; i < num_procs; i++) {
-        displacements[i] = displacements[i - 1] + send_counts[i - 1];
+    // Broadcast partition data
+    MPI_Bcast(partition.data(), partition.size(), MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Assign partitions to processes
+    std::vector<Node> local_nodes;
+    for (size_t i = 0; i < partition.size(); i++) {
+        if (partition[i] == rank) {
+            local_nodes.push_back(i);
+        }
     }
 
-    int start_row = displacements[rank];
-    int end_row = start_row + send_counts[rank];
-    Eigen::MatrixXd local_M = M_pruned.block(start_row, 0, end_row - start_row, keep.size());
+    Eigen::MatrixXd local_M = M_pruned(local_nodes, local_nodes);
+    Eigen::VectorXd local_u0 = u0(local_nodes);
 
-    // Run clique optimization on local partition
-    std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0.segment(start_row, end_row - start_row), Params());
+    std::vector<long> long_clique = clipperplus::clique_optimization(local_M, local_u0, Params());
     std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
-    //std::vector<Node> local_clique = clipperplus::clique_optimization(local_M, u0.segment(start_row, end_row - start_row), Params());
     int local_clique_size = local_clique.size();
 
-    // Gather maximum clique size across processes
     int global_max_clique_size;
     MPI_Allreduce(&local_clique_size, &global_max_clique_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-    // Process 0 collects all results
     std::vector<Node> global_clique;
     if (rank == 0) {
         global_clique = local_clique;
     }
-
-    // Broadcast the globally largest clique to all processes  
-    // A bit redundant
+    
     int clique_size = global_clique.size();
     MPI_Bcast(&clique_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
     global_clique.resize(clique_size);
@@ -91,8 +98,8 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         certificate = CERTIFICATE::CHROMATIC_BOUND;
     }
 
+    MPI_Finalize();
     return {global_clique, certificate};
-     MPI_Finalize();
 }
 
 }
