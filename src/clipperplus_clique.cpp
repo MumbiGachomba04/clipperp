@@ -1,6 +1,6 @@
 #include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
-
+#include <metis.h>
 
 namespace clipperplus 
 {
@@ -27,33 +27,48 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         }
     }
 
-    // ** Step 3: Convert Graph to CSR Format for METIS **
+    if (keep.empty()) {
+        return {heuristic_clique, CERTIFICATE::NONE};
+    }
+
+    // ** Step 3: Extract Adjacency Matrix for METIS **
+    Eigen::MatrixXd M_pruned = graph.get_adj_matrix()(keep, keep);
+    M_pruned.diagonal().setOnes();
+
+    // Convert adjacency matrix to CSR format for METIS
     std::vector<idx_t> xadj(keep.size() + 1, 0), adjncy;
-    for (size_t i = 0; i < keep.size(); ++i) {
-        for (auto neighbor : graph.neighbors(keep[i])) {
-            auto it = std::find(keep.begin(), keep.end(), neighbor);
-            if (it != keep.end()) {
-                adjncy.push_back(std::distance(keep.begin(), it));
+    idx_t num_vertices = keep.size();
+
+    for (idx_t i = 0; i < num_vertices; ++i) {
+        for (idx_t j = 0; j < num_vertices; ++j) {
+            if (M_pruned(i, j) > 0) {
+                adjncy.push_back(j);
             }
         }
         xadj[i + 1] = adjncy.size();
     }
 
-    // ** Step 4: METIS Partitioning **
-    int num_parts = 5;  // Number of partitions (can be tuned)
-    std::vector<idx_t> partition(keep.size(), 0);
-    idx_t num_vertices = keep.size();
-    idx_t objval;
+    if (adjncy.empty()) {
+        return {heuristic_clique, CERTIFICATE::NONE};
+    }
 
-    METIS_PartGraphKway(&num_vertices, 
-                        nullptr, 
-                        xadj.data(), adjncy.data(), 
-                        nullptr, nullptr, nullptr, 
-                        &num_parts, 
-                        nullptr, nullptr, 
-                        nullptr, 
-                        &objval, 
-                        partition.data());
+    // ** Step 4: METIS Partitioning **
+    int num_parts = 4;  
+    std::vector<idx_t> partition(num_vertices, 0);
+    idx_t objval;
+    int status = METIS_PartGraphKway(&num_vertices, 
+                                     nullptr, 
+                                     xadj.data(), adjncy.data(), 
+                                     nullptr, nullptr, nullptr, 
+                                     &num_parts, 
+                                     nullptr, nullptr, 
+                                     nullptr, 
+                                     &objval, 
+                                     partition.data());
+
+    if (status != METIS_OK) {
+        throw std::runtime_error("METIS partitioning failed!");
+    }
 
     // ** Step 5: Iterate Over Each Partition Sequentially **
     std::vector<Node> max_clique;
@@ -65,17 +80,18 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
             }
         }
 
-        // Extract induced subgraph for this partition
+        if (partition_nodes.empty()) {
+            continue;
+        }
+
         Graph subgraph = graph.induced(partition_nodes);
         Eigen::MatrixXd local_M = subgraph.get_adj_matrix();
         Eigen::VectorXd u0 = Eigen::VectorXd::Ones(partition_nodes.size());
         u0.normalize();
 
-        // Run clique optimization on this partition
         std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
         std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
 
-        // Keep track of the largest clique found
         if (local_clique.size() > max_clique.size()) {
             max_clique = local_clique;
         }
