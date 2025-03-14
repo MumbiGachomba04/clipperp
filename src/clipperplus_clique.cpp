@@ -60,7 +60,9 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     Eigen::MatrixXd local_M = M_pruned.block(start_row, 0, end_row - start_row, keep.size());
 
     // Run clique optimization on local partition
-    std::vector<Node> local_clique = clipperplus::clique_optimization(local_M, u0.segment(start_row, end_row - start_row), Params());
+    std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0.segment(start_row, end_row - start_row), Params());
+    std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
+    //std::vector<Node> local_clique = clipperplus::clique_optimization(local_M, u0.segment(start_row, end_row - start_row), Params());
     int local_clique_size = local_clique.size();
 
     // Gather maximum clique size across processes
