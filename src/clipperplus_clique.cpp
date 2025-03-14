@@ -26,6 +26,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
             keep_pos[i] = j++;
         }
     }
+    std::cout<< "Keep size : " << keep.size() << std::endl;
 
     Eigen::MatrixXd M_pruned = graph.get_adj_matrix()(keep, keep);
     M_pruned.diagonal().setOnes();
@@ -37,20 +38,21 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     u0.normalize();
 
     // Parallel computation of maximum clique
+    MPI_Init(NULL); 
     int rank, num_procs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
 
     // Distribute graph partitions 
     int rows_per_proc = keep.size() / num_procs;
-    int rest = keep.size() % num_procs;
+    int rest = keep.size() % num_procs; // remainder
     
     std::vector<int> send_counts(num_procs, rows_per_proc);
     for (int i = 0; i < rest; i++) {
-        send_counts[i]++; // Distribute remainder rows to first few processes
+        send_counts[i]++; // Distribute remainder rows to first processes
     }
 
-    std::vector<int> displacements(num_procs, 0);
+    std::vector<int> displacements(num_procs, 0); //Update row numbers based on displacements 
     for (int i = 1; i < num_procs; i++) {
         displacements[i] = displacements[i - 1] + send_counts[i - 1];
     }
@@ -90,6 +92,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     }
 
     return {global_clique, certificate};
+     MPI_Finalize();
 }
 
 }
