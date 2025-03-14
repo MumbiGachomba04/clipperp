@@ -8,16 +8,11 @@
 #include <pybind11/pybind11.h>
 #include "clipperplus/clipperplus_clique.h"
 #include "clipperplus/clique_optimization.h"
-#include <mpi.h>
 
 class Wrapper {
   public:
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
-        
-	clipperplus::Graph local_graph(adj);
-	const std::unordered_map<clipperplus::Node, int> &global_to_local = local_graph.get_global_to_local();
-	auto [clique, certificate] = clipperplus::find_clique_dist(local_graph, global_to_local, MPI_COMM_WORLD);
-  	//auto [clique, certificate] = clipperplus::find_clique_dist(adj);
+      auto [clique, certificate] = clipperplus::find_clique(adj);
 
       return std::make_tuple((long)clique.size(), clique, (int)certificate);
     }
@@ -39,4 +34,3 @@ class Wrapper {
     }
 
 };
-
