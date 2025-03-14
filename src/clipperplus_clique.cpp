@@ -7,11 +7,6 @@ namespace clipperplus
 
 std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
 {
-    MPI_Init(NULL, NULL);
-    int rank, num_procs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
-
     int n = graph.size();
     auto chromatic_welsh = estimate_chormatic_number_welsh_powell(graph);
     auto k_core_bound = graph.max_core_number() + 1;
@@ -19,7 +14,6 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     // ** Step 1: Compute Heuristic Clique **
     std::vector<Node> heuristic_clique = find_heuristic_clique(graph);
     if (heuristic_clique.size() == std::min({k_core_bound, chromatic_welsh})) {
-        MPI_Finalize();
         return {heuristic_clique, CERTIFICATE::HEURISTIC};
     }
 
@@ -33,82 +27,68 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         }
     }
 
-    // ** Step 3: Convert Graph to CSR Format (Only Rank 0) **
-    std::vector<int> xadj, adjncy;
-    if (rank == 0) {
-        int n_keep = keep.size();
-        xadj.resize(n_keep + 1);
-        adjncy.clear();
-
-        xadj[0] = 0;
-        for (int i = 0; i < n_keep; ++i) {
-            for (auto neighbor : graph.neighbors(keep[i])) {
-                auto it = std::find(keep.begin(), keep.end(), neighbor);
-                if (it != keep.end()) {
-                    adjncy.push_back(std::distance(keep.begin(), it));
-                }
+    // ** Step 3: Convert Graph to CSR Format for METIS **
+    std::vector<idx_t> xadj(keep.size() + 1, 0), adjncy;
+    for (size_t i = 0; i < keep.size(); ++i) {
+        for (auto neighbor : graph.neighbors(keep[i])) {
+            auto it = std::find(keep.begin(), keep.end(), neighbor);
+            if (it != keep.end()) {
+                adjncy.push_back(std::distance(keep.begin(), it));
             }
-            xadj[i + 1] = adjncy.size();
         }
+        xadj[i + 1] = adjncy.size();
     }
 
-    // ** Step 4: METIS Partitioning (Only Rank 0) **
+    // ** Step 4: METIS Partitioning **
+    int num_parts = 5;  // Number of partitions (can be tuned)
     std::vector<idx_t> partition(keep.size(), 0);
-    if (rank == 0) {
-        idx_t num_vertices = keep.size();
-        idx_t num_parts = num_procs;  // One partition per process
-        idx_t objval;
+    idx_t num_vertices = keep.size();
+    idx_t objval;
 
-        METIS_PartGraphKway(&num_vertices, 
-                            nullptr, 
-                            xadj.data(), adjncy.data(), 
-                            nullptr, nullptr, nullptr, 
-                            &num_parts, 
-                            nullptr, nullptr, 
-                            nullptr, 
-                            &objval, 
-                            partition.data());
-    }
+    METIS_PartGraphKway(&num_vertices, 
+                        nullptr, 
+                        xadj.data(), adjncy.data(), 
+                        nullptr, nullptr, nullptr, 
+                        &num_parts, 
+                        nullptr, nullptr, 
+                        nullptr, 
+                        &objval, 
+                        partition.data());
 
-    // ** Step 5: Rank 0 Iterates Over Each Partition Sequentially **
+    // ** Step 5: Iterate Over Each Partition Sequentially **
     std::vector<Node> max_clique;
-    if (rank == 0) {
-        for (int p = 0; p < num_procs; p++) {
-            std::vector<Node> partition_nodes;
-            for (size_t i = 0; i < keep.size(); ++i) {
-                if (partition[i] == p) {
-                    partition_nodes.push_back(keep[i]);
-                }
+    for (int p = 0; p < num_parts; p++) {
+        std::vector<Node> partition_nodes;
+        for (size_t i = 0; i < keep.size(); ++i) {
+            if (partition[i] == p) {
+                partition_nodes.push_back(keep[i]);
             }
+        }
 
-            // Extract induced subgraph for this partition
-            Graph subgraph = graph.induced(partition_nodes);
-            Eigen::MatrixXd local_M = subgraph.get_adj_matrix();
-            Eigen::VectorXd u0 = Eigen::VectorXd::Ones(partition_nodes.size());
-            u0.normalize();
+        // Extract induced subgraph for this partition
+        Graph subgraph = graph.induced(partition_nodes);
+        Eigen::MatrixXd local_M = subgraph.get_adj_matrix();
+        Eigen::VectorXd u0 = Eigen::VectorXd::Ones(partition_nodes.size());
+        u0.normalize();
 
-            // Run clique optimization on this partition
-            std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
-            std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
+        // Run clique optimization on this partition
+        std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
+        std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
 
-            // Keep track of the largest clique found
-            if (local_clique.size() > max_clique.size()) {
-                max_clique = local_clique;
-            }
+        // Keep track of the largest clique found
+        if (local_clique.size() > max_clique.size()) {
+            max_clique = local_clique;
         }
     }
 
-    // ** Step 6: Rank 0 Determines Certificate and Finalizes MPI **
+    // ** Step 6: Determine Certificate **
     auto certificate = CERTIFICATE::NONE;
-    if (rank == 0) {
-        if (max_clique.size() == k_core_bound) {
-            certificate = CERTIFICATE::CORE_BOUND;
-        } else if (max_clique.size() == chromatic_welsh) {
-            certificate = CERTIFICATE::CHROMATIC_BOUND;
-        }
+    if (max_clique.size() == k_core_bound) {
+        certificate = CERTIFICATE::CORE_BOUND;
+    } else if (max_clique.size() == chromatic_welsh) {
+        certificate = CERTIFICATE::CHROMATIC_BOUND;
     }
 
-    MPI_Finalize();
     return {max_clique, certificate};
 }
 
