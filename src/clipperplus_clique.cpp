@@ -94,7 +94,11 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         u0.normalize();
 
         std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
-        std::vector<Node> local_clique(long_clique.begin(), long_clique.end());
+        std::vector<Node> local_clique;
+        for (long idx : long_clique) {
+            local_clique.push_back(partition_nodes[idx]);  // Map back to global indices
+        }
+
 
         if (local_clique.size() > max_clique.size()) {
             max_clique = local_clique;
