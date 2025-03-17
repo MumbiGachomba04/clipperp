@@ -10,13 +10,13 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     int n = graph.size();
     auto chromatic_welsh = estimate_chormatic_number_welsh_powell(graph);
     auto k_core_bound = graph.max_core_number() + 1;
-
+    std::cout << "step 1" << std::endl;
     // ** Step 1: Compute Heuristic Clique **
     std::vector<Node> heuristic_clique = find_heuristic_clique(graph);
     if (heuristic_clique.size() == std::min({k_core_bound, chromatic_welsh})) {
         return {heuristic_clique, CERTIFICATE::HEURISTIC};
     }
-
+    std::cout << "step 2" << std::endl;
     // ** Step 2: Filter Nodes Based on Core Numbers **
     std::vector<int> core_number = graph.get_core_numbers();
     std::vector<int> keep, keep_pos(n, -1);
@@ -30,11 +30,12 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     if (keep.empty()) {
         return {heuristic_clique, CERTIFICATE::NONE};
     }
-
+    std::cout << "step 3" << std::endl;
     // ** Step 3: Extract Adjacency Matrix for METIS **
     Eigen::MatrixXd M_pruned = graph.get_adj_matrix()(keep, keep);
     M_pruned.diagonal().setOnes();
 
+    
     // Convert adjacency matrix to CSR format for METIS
     std::vector<idx_t> xadj(keep.size() + 1, 0), adjncy;
     idx_t num_vertices = keep.size();
@@ -51,6 +52,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     if (adjncy.empty()) {
         return {heuristic_clique, CERTIFICATE::NONE};
     }
+    std::cout << "step 4" << std::endl;
 
     // ** Step 4: METIS Partitioning **
     int num_parts = 4;  
@@ -70,6 +72,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         throw std::runtime_error("METIS partitioning failed!");
     }
 
+    std::cout << "step 5" << std::endl;
     // ** Step 5: Iterate Over Each Partition Sequentially **
     std::vector<Node> max_clique;
     for (int p = 0; p < num_parts; p++) {
@@ -96,7 +99,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
             max_clique = local_clique;
         }
     }
-
+    std::cout << "step 6" << std::endl;
     // ** Step 6: Determine Certificate **
     auto certificate = CERTIFICATE::NONE;
     if (max_clique.size() == k_core_bound) {
