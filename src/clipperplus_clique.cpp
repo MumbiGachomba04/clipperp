@@ -91,7 +91,12 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         Graph subgraph = graph.induced(partition_nodes);
         Eigen::MatrixXd local_M = subgraph.get_adj_matrix();
         Eigen::VectorXd u0 = Eigen::VectorXd::Ones(partition_nodes.size());
+        for(auto v : heuristic_clique) {
+             assert(keep_pos[v] >= 0);
+             u0(keep_pos[v]) = 0;
+        }
         u0.normalize();
+        
 
         std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
         std::vector<Node> local_clique;
