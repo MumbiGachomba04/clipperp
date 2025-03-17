@@ -1,6 +1,6 @@
 #include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
-#include <metis.h>
+
 
 namespace clipperplus 
 {
@@ -58,8 +58,9 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     int num_parts = 4;  
     std::vector<idx_t> partition(num_vertices, 0);
     idx_t objval;
+    idx_t ncon = 1;
     int status = METIS_PartGraphKway(&num_vertices, 
-                                     nullptr, 
+                                     &ncon, 
                                      xadj.data(), adjncy.data(), 
                                      nullptr, nullptr, nullptr, 
                                      &num_parts, 
