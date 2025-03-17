@@ -95,8 +95,10 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         //      assert(keep_pos[v] >= 0);
         //      u0(keep_pos[v]) = 0;
         // }
-        u0.normalize();
-        
+        //u0.normalize();
+        u0.setRandom();
+        u0 = (u0.array() - 0.5) * 2;  // Normalize to range [-1,1]
+        u0.normalize();     
 
         std::vector<long> long_clique = clipperplus::clique_optimization(local_M, u0, Params());
         std::vector<Node> local_clique;
