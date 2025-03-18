@@ -90,13 +90,12 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
 
         Graph subgraph = graph.induced(partition_nodes);
         Eigen::MatrixXd local_M = subgraph.get_adj_matrix();
-        Eigen::VectorXd u0 = Eigen::VectorXd::Ones(partition_nodes.size());
+        Eigen::VectorXd u0 = Eigen::VectorXd::Random(partition_nodes.size());
         // for(auto v : heuristic_clique) {
         //      assert(keep_pos[v] >= 0);
         //      u0(keep_pos[v]) = 0;
         // }
         //u0.normalize();
-        u0.setRandom();
         u0 = (u0.array() - 0.5) * 2;  // Normalize to range [-1,1]
         u0.normalize();     
 
