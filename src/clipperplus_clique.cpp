@@ -72,18 +72,14 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
     std::vector<idx_t> partition(num_vertices, 0);
     idx_t objval;
     idx_t ncon = 1;
-    real_t ubvec[ncon];
-
-    for (int i = 0; i < ncon; ++i) {
-    ubvec[i] = 1.1;  
-    }
+   
 
     int status = METIS_PartGraphKway(&num_vertices, 
                                      &ncon, 
                                      xadj.data(), adjncy.data(), 
                                      nullptr, nullptr, nullptr, 
                                      &num_parts, 
-                                     nullptr, ubvec, 
+                                     nullptr, nullptr, 
                                      nullptr, 
                                      &objval, 
                                      partition.data());
