@@ -68,7 +68,7 @@ std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
         return {optimal_clique, CERTIFICATE::NONE};
     }
     
-    int num_parts = 4;
+    int num_parts = 2;
     std::vector<idx_t> partition(num_vertices, 0);
     idx_t objval;
     idx_t ncon = 1;
