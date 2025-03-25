@@ -23,5 +23,6 @@ enum class CERTIFICATE
 };
 
 std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph);
+std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph);
 
 } 

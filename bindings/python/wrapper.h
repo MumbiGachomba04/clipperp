@@ -12,7 +12,8 @@
 class Wrapper {
   public:
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
-      auto [clique, certificate] = clipperplus::find_clique(adj);
+      
+      auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
 
       return std::make_tuple((long)clique.size(), clique, (int)certificate);
     }
