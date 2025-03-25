@@ -25,7 +25,9 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         xadj[i + 1] = xadj[i] + neighbors.size();
         adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
     }
-    
+    idx_t options[METIS_NOPTIONS];  // Define the options array
+    METIS_SetDefaultOptions(options);  // Initialize it with default values
+    options[METIS_OPTION_UFACTOR] = 500;
     // Partition the graph 
     int status = METIS_PartGraphKway(&num_vertices, 
                                      &ncon, 
@@ -33,7 +35,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
                                      nullptr, nullptr, nullptr, 
                                      &num_parts, 
                                      nullptr, nullptr, 
-                                     nullptr, 
+                                     options, 
                                      &objval, 
                                      partition.data());
     
