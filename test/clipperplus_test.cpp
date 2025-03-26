@@ -30,7 +30,7 @@ TEST(CLIPPERPLUS, clique1)
 
     std::cout << adj << "\n" << std::endl;
 
-    auto [clique, certificate] = clipperplus::find_clique(adj);
+    auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
     std::sort(clique.begin(), clique.end());
 
     EXPECT_EQ(clique.size(), 6);
@@ -59,7 +59,7 @@ TEST(CLIPPERPLUS, clique2) {
 
     std::cout << adj << "\n" << std::endl;
 
-    auto [clique, certificate] = clipperplus::find_clique(adj);
+    auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
     std::sort(clique.begin(), clique.end());
 
     EXPECT_EQ(clique.size(), 7);
@@ -95,7 +95,7 @@ TEST(CLIPPERPLUS, clique3) {
 
     std::cout << adj << "\n" << std::endl;  
 
-    auto [clique, certificate] = clipperplus::find_clique(adj);
+    auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
     std::sort(clique.begin(), clique.end());
 
     EXPECT_EQ(clique.size(), 8);
@@ -117,7 +117,7 @@ TEST(CLIPPERPLUS, clique4) {
 
     std::cout << adj << "\n" << std::endl;
 
-    auto [clique, certificate] = clipperplus::find_clique(adj);
+    auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
     std::sort(clique.begin(), clique.end());
 
     EXPECT_EQ(clique.size(), 3);
