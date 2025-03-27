@@ -127,7 +127,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         if (local_info.clique_size == best_size) {
             MPI_Send(local_result[0].first.data(), local_info.clique_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
-        return {}; // Workers return empty result
+        return std::nullopt; // Workers return empty result
     }
 }
 
