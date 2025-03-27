@@ -1,7 +1,7 @@
 #include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
 
-#include <optional>
+
 
 
 namespace clipperplus 
@@ -129,7 +129,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         if (local_info.clique_size == best_size) {
             MPI_Send(local_result[0].first.data(), local_info.clique_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
-        return std::nullopt; // Workers return empty result
+       
     }
 }
 
