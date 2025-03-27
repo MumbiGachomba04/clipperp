@@ -196,7 +196,7 @@ void Graph::calculate_kcores() const
     kcore = std::move(degree);
 }
 
-const std::vector<int> &Graph::graph_to_vector() const {
+const std::vector<int> Graph::graph_to_vector() const {
         std::vector<int> buffer;
         int num_nodes = adj_matrix.rows();
         buffer.push_back(num_nodes);
@@ -225,7 +225,7 @@ const std::vector<int> &Graph::graph_to_vector() const {
 
 }
 
- Graph &Graph::vector_to_graph(const std::vector<int>& buffer){
+ Graph Graph::vector_to_graph(const std::vector<int>& buffer){
     int index = 0;
     int num_nodes = buffer[index++];
 
