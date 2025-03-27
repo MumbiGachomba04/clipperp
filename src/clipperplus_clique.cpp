@@ -102,7 +102,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     // Master collects best result
     if (rank == 0) {
-        
+        std::pair<std::vector<Node>, CERTIFICATE> best_result = local_result[0];
 
         for (int i = 1; i < size; ++i) {
             int recv_size;
@@ -116,11 +116,12 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
                 // Optionally receive full clique
                 std::vector<Node> clique(recv_size);
                 MPI_Recv(clique.data(), recv_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                
+                best_result = std::make_pair(clique, certificate);
             }
         }
 
 
+        //return best_result;
     } else {
         // Workers send result to master
         MPI_Send(&local_info.clique_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
