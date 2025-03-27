@@ -40,9 +40,9 @@ public:
     
     const Eigen::MatrixXd &get_adj_matrix() const;
  
-    const std::vector<int> &graph_to_vector() const ;
+    const std::vector<int> graph_to_vector() const ;
 
-    static Graph &vector_to_graph(const std::vector<int>& buffer);
+    static Graph vector_to_graph(const std::vector<int>& buffer);
 
 
 private:
