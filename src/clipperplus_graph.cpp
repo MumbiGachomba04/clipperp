@@ -211,7 +211,7 @@ const std::vector<int> &Graph::graph_to_vector() const {
 
 }
 
- static Graph &Graph::vector_to_graph(const std::vector<int>& buffer){
+ Graph &Graph::vector_to_graph(const std::vector<int>& buffer){
         Graph g;
         int index = 0;
         int num_nodes = buffer[index++];
