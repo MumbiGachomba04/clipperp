@@ -1,6 +1,8 @@
 #include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
 
+#include <optional>
+
 
 namespace clipperplus 
 {
