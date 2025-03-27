@@ -114,7 +114,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
                 // Optionally receive full clique
                 std::vector<Node> clique(recv_size);
                 MPI_Recv(clique.data(), recv_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                best_result = {clique, recv_cert};
+                best_result = std::make_pair(clique, certificate);
             }
         }
 
