@@ -5,6 +5,9 @@
 #include <Eigen/Dense>
 #include <mpi.h>
 #include <metis.h>
+#include <algorithm>
+#include <numeric>
+#include <stdexcept>
 
 #include "clipperplus/clique_optimization.h"
 #include "clipperplus/clipperplus_heuristic.h"

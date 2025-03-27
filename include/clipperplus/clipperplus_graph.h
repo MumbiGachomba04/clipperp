@@ -39,6 +39,11 @@ public:
     const std::vector<Node> &get_core_ordering() const;
     
     const Eigen::MatrixXd &get_adj_matrix() const;
+ 
+    const std::vector<int> &graph_to_vector() const ;
+
+    static Graph &vector_to_graph(const std::vector<int>& buffer);
+
 
 private:
     void calculate_kcores() const;
