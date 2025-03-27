@@ -18,6 +18,7 @@
 #include "../../include/clipperplus/utils.h"
 
 #include "wrapper.h"
+#include "mpi_manager.h"
 
 
 namespace py = pybind11;
@@ -27,6 +28,7 @@ using namespace pybind11::literals;
 
 PYBIND11_MODULE(clipperpluspy, m)
 {
+  static MPIManager mpi_manager;  // Auto-init & finalize MPI
   m.doc() = "CLIPPER+ is an algorithm for finding maximal cliques in unweighted graphs for outlier-robust global registration.";
   m.attr("__version__") = CLIPPERPLUS_VERSION;
 

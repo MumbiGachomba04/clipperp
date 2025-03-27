@@ -196,5 +196,37 @@ void Graph::calculate_kcores() const
     kcore = std::move(degree);
 }
 
+const std::vector<int> &Graph::graph_to_vector() const {
+        std::vector<int> buffer;
+        buffer.push_back(nodes.size());
+        for (auto n : nodes) {
+            buffer.push_back(n); 
+        }
+        buffer.push_back(edges.size());
+        for (auto e : edges) {
+            buffer.push_back(e.first);
+            buffer.push_back(e.second);
+        }
+        return buffer;
+
+}
+
+ static Graph &Graph::vector_to_graph(const std::vector<int>& buffer){
+        Graph g;
+        int index = 0;
+        int num_nodes = buffer[index++];
+        for (int i = 0; i < num_nodes; ++i) {
+            g.nodes.push_back(buffer[index++]);
+        }
+        int num_edges = buffer[index++];
+        for (int i = 0; i < num_edges; ++i) {
+            int u = buffer[index++];
+            int v = buffer[index++];
+            g.edges.emplace_back(u, v);
+        }
+        return g;
+
+ }
+
 
 }

@@ -8,66 +8,127 @@ namespace clipperplus
 
 std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph)
 {
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
     int num_vertices = graph.size();
-    int num_parts = 4;
+    int num_parts = size; 
     std::vector<idx_t> partition(num_vertices, 0);
     idx_t objval;
     idx_t ncon = 1;
-    
-    
-    std::vector<idx_t> xadj, adjncy;
 
-    //create csr matrix
-    xadj.resize(num_vertices + 1, 0);
-    
-    for (int i = 0; i < num_vertices; ++i) {
-        const auto &neighbors = graph.neighbors(i);
-        xadj[i + 1] = xadj[i] + neighbors.size();
-        adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
+    std::vector<std::pair<std::vector<Node>, CERTIFICATE>> local_result(1);
+
+    if (rank == 0) {
+
+        // Convert graph to CSR
+        std::vector<idx_t> xadj(num_vertices + 1, 0);
+        std::vector<idx_t> adjncy;
+        for (int i = 0; i < num_vertices; ++i) {
+            const auto &neighbors = graph.neighbors(i);
+            xadj[i + 1] = xadj[i] + neighbors.size();
+            adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
+        }
+
+        // METIS partitioning
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        options[METIS_OPTION_UFACTOR] = 500;
+        int status = METIS_PartGraphKway(&num_vertices,
+                                         &ncon,
+                                         xadj.data(), adjncy.data(),
+                                         nullptr, nullptr, nullptr,
+                                         &num_parts,
+                                         nullptr, nullptr,
+                                         options,
+                                         &objval,
+                                         partition.data());
+
+        if (status != METIS_OK) {
+            throw std::runtime_error("METIS partitioning failed");
+        }
+
+        // Prepare subgraphs & send to other procs
+        for (int i = 0; i < num_parts; ++i) {
+            std::vector<Node> nodes;
+            for (int j = 0; j < num_vertices; ++j) {
+                if (partition[j] == i) {
+                    nodes.push_back(j);
+                }
+            }
+            Graph subgraph = graph.induced(nodes);
+
+            if (i == 0) {
+                local_result[0] = find_clique(subgraph);
+            } else {
+               auto buffer = subgraph.graph_to_vector();
+               int size = buffer.size();
+               MPI_Send(&size, 1, MPI_INT, i, 444, MPI_COMM_WORLD);
+               MPI_Send(buffer.data(), size, MPI_INT, i, 444, MPI_COMM_WORLD);
+            }
+        }
+    } else {
+       
+        Graph subgraph;
+        int size;
+        MPI_Recv(&size, 1, MPI_INT, 0, 444, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        std::vector<int> buffer(size);
+        MPI_Recv(buffer.data(), size, MPI_INT, 0 , 444, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        subgraph = subgraph.vector_to_graph(buffer);
+        local_result[0] = find_clique(subgraph);
     }
-    idx_t options[METIS_NOPTIONS];  // Define the options array
-    METIS_SetDefaultOptions(options);  // Initialize it with default values
-    options[METIS_OPTION_UFACTOR] = 500;
-    // Partition the graph 
-    int status = METIS_PartGraphKway(&num_vertices, 
-                                     &ncon, 
-                                     xadj.data(), adjncy.data(), 
-                                     nullptr, nullptr, nullptr, 
-                                     &num_parts, 
-                                     nullptr, nullptr, 
-                                     options, 
-                                     &objval, 
-                                     partition.data());
+
     
-    if (status != METIS_OK) {
-        throw std::runtime_error("METIS partitioning failed");
+    // get results ( only clique size  &  certificate)
+    struct CliqueInfo {
+        int clique_size;
+        CERTIFICATE certificate;
+    } local_info, best_info;
+
+    if (rank == 0) {
+        local_info.clique_size = local_result[0].first.size();
+        local_info.certificate = local_result[0].second;
+    } else {
+        local_info.clique_size = local_result[0].first.size();
+        local_info.certificate = local_result[0].second;
     }
-    
-    // Create subgraphs 
-    std::vector<Graph> subgraphs(num_parts);
-    std::vector<std::vector<Node>> partition_nodes(num_parts);
-    
-    for (int i = 0; i < num_vertices; ++i) {
-        partition_nodes[partition[i]].push_back(i);
+
+    // find max clique size
+    int best_size;
+    MPI_Allreduce(&local_info.clique_size, &best_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+    // Master collects best result
+    if (rank == 0) {
+        std::pair<std::vector<Node>, CERTIFICATE> best_result = local_result[0];
+
+        for (int i = 1; i < size; ++i) {
+            int recv_size;
+            
+            MPI_Recv(&recv_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            int recv_cert;
+            MPI_Recv(&recv_cert, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            CERTIFICATE certificate = static_cast<CERTIFICATE>(recv_cert);
+
+            if (recv_size == best_size) {
+                // Optionally receive full clique
+                std::vector<Node> clique(recv_size);
+                MPI_Recv(clique.data(), recv_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                best_result = {clique, recv_cert};
+            }
+        }
+
+        return best_result;
+    } else {
+        // Workers send result to master
+        MPI_Send(&local_info.clique_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        int cert = static_cast<int>(local_info.certificate);
+        MPI_Send(&cert, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        if (local_info.clique_size == best_size) {
+            MPI_Send(local_result[0].first.data(), local_info.clique_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        }
+        return {}; // Workers return empty result
     }
-    
-    for (int i = 0; i < num_parts; ++i) {
-        subgraphs[i] = graph.induced(partition_nodes[i]);
-    }
-    
-    std::vector<std::pair<std::vector<Node>, CERTIFICATE>> results(num_parts);
-    
-    for (int i = 0; i < num_parts; ++i) {
-        results[i] = find_clique(subgraphs[i]);
-    }
-    
-    // Find the largest clique among the parts
-    auto best_result = *std::max_element(results.begin(), results.end(), 
-        [](const auto &a, const auto &b) {
-            return a.first.size() < b.first.size();
-        });
-    
-    return best_result;
 }
 
 
