@@ -102,7 +102,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     // Master collects best result
     if (rank == 0) {
-        std::pair<std::vector<Node>, CERTIFICATE> best_result = local_result[0];
+        
 
         for (int i = 1; i < size; ++i) {
             int recv_size;
@@ -116,11 +116,11 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
                 // Optionally receive full clique
                 std::vector<Node> clique(recv_size);
                 MPI_Recv(clique.data(), recv_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                best_result = std::make_pair(clique, certificate);
+                
             }
         }
 
-        return best_result;
+
     } else {
         // Workers send result to master
         MPI_Send(&local_info.clique_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
@@ -131,6 +131,24 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
        
     }
+    int best_cert;
+    if (rank == 0) {
+        best_cert = static_cast<int>(best_result.second);
+    }
+    MPI_Bcast(&best_cert, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    CERTIFICATE final_certificate = static_cast<CERTIFICATE>(best_cert);
+
+    // Broadcast the clique nodes
+    std::vector<Node> best_clique;
+    if (rank == 0) {
+        best_clique = best_result.first;
+    }
+
+    best_clique.resize(best_size);
+    MPI_Bcast(best_clique.data(), best_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+    return {best_clique, final_certificate};
+
 }
 
 
