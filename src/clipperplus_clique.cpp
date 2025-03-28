@@ -61,7 +61,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     auto local_result = find_clique(local_graph);
     int local_clique_size = local_result.first.size();
 
-    std::cout << "Rank: " << rank << "Local clique size: " << local_clique_size << std::endl;
+    std::cout << "Rank: " << rank << " Local clique size: " << local_clique_size << std::endl;
 
     // Gather all clique sizes at rank 0 to find the max
     int best_size;
