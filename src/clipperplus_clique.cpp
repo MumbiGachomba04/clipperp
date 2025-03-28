@@ -22,7 +22,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     std::vector<idx_t> xadj(num_vertices + 1, 0);
     std::vector<idx_t> adjncy;
 
-    // Master process (rank 0) partitions the graph
+    // rank 0 partitions the graph
     if (rank == 0) {
         for (int i = 0; i < num_vertices; ++i) {
             const auto &neighbors = graph.neighbors(i);
@@ -43,7 +43,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
     }
 
-    // Broadcast partitioning information to all processes
+    // Broadcast partition to all processes . no need to send csr
     MPI_Bcast(partition.data(), num_vertices, MPI_INT, 0, MPI_COMM_WORLD);
 
     // Each process determines its subset of nodes
@@ -54,14 +54,16 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
     }
 
-    // Create the induced subgraph for each process
+    //  each process creates subgraph
     Graph local_graph = graph.induced(local_nodes);
 
     // Each process finds the max clique in its subgraph
     auto local_result = find_clique(local_graph);
     int local_clique_size = local_result.first.size();
 
-    // Gather all clique sizes at rank 0 to find the maximum
+    std::cout << "Rank: " << rank << "Local clique size: " << local_clique_size << std::endl;
+
+    // Gather all clique sizes at rank 0 to find the max
     int best_size;
     MPI_Allreduce(&local_clique_size, &best_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 

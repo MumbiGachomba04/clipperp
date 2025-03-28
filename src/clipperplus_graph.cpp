@@ -196,53 +196,6 @@ void Graph::calculate_kcores() const
     kcore = std::move(degree);
 }
 
-const std::vector<int> Graph::graph_to_vector() const {
-        std::vector<int> buffer;
-        int num_nodes = adj_matrix.rows();
-        buffer.push_back(num_nodes);
-        for (int i = 0; i < num_nodes; ++i) {
-            buffer.push_back(i);  // You can use the node index directly
-        }
-        // Now, get the edges from the adjacency matrix
-        int num_edges = 0;
-        for (int i = 0; i < num_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (adj_matrix(i, j) != 0) {
-                    ++num_edges;
-                }
-            }
-        }
-        buffer.push_back(num_edges);
-        for (int i = 0; i < num_nodes; ++i) {
-            for (int j = 0; j < num_nodes; ++j) {
-                if (adj_matrix(i, j) != 0) {
-                    buffer.push_back(i);
-                    buffer.push_back(j);
-                }
-            }
-        }
-        return buffer;
-
-}
-
- Graph Graph::vector_to_graph(const std::vector<int>& buffer){
-    int index = 0;
-    int num_nodes = buffer[index++];
-
-    Eigen::MatrixXd adj_matrix = Eigen::MatrixXd::Zero(num_nodes, num_nodes);
-    std::vector<Neighborlist> adj_list(num_nodes);
-
-    int num_edges = buffer[index++];
-    for (int i = 0; i < num_edges; ++i) {
-        int u = buffer[index++];
-        int v = buffer[index++];
-        adj_matrix(u, v) = 1;  // Assuming unweighted graph
-        adj_list[u].push_back(v);
-    }
-
-    return Graph(adj_matrix);;
-
- }
 
 
 }
