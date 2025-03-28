@@ -7,7 +7,6 @@
 namespace clipperplus 
 {
 
-
 std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph)
 {
     int rank, size;
@@ -15,16 +14,16 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     int num_vertices = graph.size();
-    int num_parts = size; 
+    int num_parts = size;  
     std::vector<idx_t> partition(num_vertices, 0);
     idx_t objval;
     idx_t ncon = 1;
 
-    std::vector<std::pair<std::vector<Node>, CERTIFICATE>> local_result(1);
+    std::vector<idx_t> xadj(num_vertices + 1, 0);
+    std::vector<idx_t> adjncy;
 
+    // Master process partitions the graph
     if (rank == 0) {
-        std::vector<idx_t> xadj(num_vertices + 1, 0);
-        std::vector<idx_t> adjncy;
         for (int i = 0; i < num_vertices; ++i) {
             const auto &neighbors = graph.neighbors(i);
             xadj[i + 1] = xadj[i] + neighbors.size();
@@ -33,102 +32,65 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
-        options[METIS_OPTION_UFACTOR] = 10;
-        options[METIS_OPTION_SEED] = 42;
+        options[METIS_OPTION_UFACTOR] = 500; 
+
         int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-                                         nullptr, nullptr, nullptr, &num_parts, nullptr, nullptr,
-                                         options, &objval, partition.data());
-        
+                                         nullptr, nullptr, nullptr, &num_parts, 
+                                         nullptr, nullptr, options, &objval, partition.data());
 
         if (status != METIS_OK) {
             throw std::runtime_error("METIS partitioning failed");
         }
-
-        for (int i = 0; i < num_parts; ++i) {
-            std::vector<Node> nodes;
-            for (int j = 0; j < num_vertices; ++j) {
-                if (partition[j] == i) {
-                    nodes.push_back(j);
-                }
-            }
-            Graph subgraph = graph.induced(nodes);
-            std::cout << "RANK:" << rank << "Subgraph Size: " << subgraph.size() <<std::endl; 
-
-            if (i == 0) {
-                local_result[0] = find_clique(subgraph);
-            } else {
-                auto buffer = subgraph.graph_to_vector();
-                int size = buffer.size();
-                MPI_Send(&size, 1, MPI_INT, i, 444, MPI_COMM_WORLD);
-                MPI_Send(buffer.data(), size, MPI_INT, i, 444, MPI_COMM_WORLD);
-            }
-        }
-    } else {
-        Graph subgraph;
-        int size;
-        MPI_Recv(&size, 1, MPI_INT, 0, 444, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        std::vector<int> buffer(size);
-        MPI_Recv(buffer.data(), size, MPI_INT, 0, 444, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        subgraph = subgraph.vector_to_graph(buffer);
-        std::cout << "RANK:" << rank << "Subgraph Size: " << size <<std::endl; 
-        local_result[0] = find_clique(subgraph);
     }
 
-    struct CliqueInfo {
-        int clique_size;
-        CERTIFICATE certificate;
-    } local_info, best_info;
+    // Broadcast partitioning info
+    MPI_Bcast(partition.data(), num_vertices, MPI_INT, 0, MPI_COMM_WORLD);
 
-    local_info.clique_size = local_result[0].first.size();
-    local_info.certificate = local_result[0].second;
-    std::cout << "RANK:" << rank << "Clique Size: " <<local_info.clique_size <<std::endl; 
-    int best_size;
-    MPI_Allreduce(&local_info.clique_size, &best_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    // Each process extracts its nodes
+    std::vector<Node> local_nodes;
+    for (int i = 0; i < num_vertices; ++i) {
+        if (partition[i] == rank) {
+            local_nodes.push_back(i);
+        }
+    }
+
+    // Create induced subgraph
+    Graph local_graph = graph.induced(local_nodes);
+
+    // Compute clique in local subgraph
+    auto local_result = find_clique(local_graph);
+    int local_clique_size = local_result.first.size();
+
+    // Gather all clique sizes at rank 0
+    std::vector<int> all_clique_sizes(size);
+    MPI_Allgather(&local_clique_size, 1, MPI_INT, all_clique_sizes.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+    // Rank 0 determines the best clique
+    int best_rank = std::max_element(all_clique_sizes.begin(), all_clique_sizes.end()) - all_clique_sizes.begin();
+    int best_size = all_clique_sizes[best_rank];
 
     std::vector<Node> best_clique;
     CERTIFICATE final_certificate;
 
-    if (rank == 0) {
-        best_clique = local_result[0].first;
-        final_certificate = local_result[0].second;
-
-        for (int i = 1; i < size; ++i) {
-            int recv_size;
-            MPI_Recv(&recv_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            int recv_cert;
-            MPI_Recv(&recv_cert, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            CERTIFICATE certificate = static_cast<CERTIFICATE>(recv_cert);
-
-            if (recv_size == best_size) {
-                std::vector<Node> clique(recv_size);
-                MPI_Recv(clique.data(), recv_size, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                best_clique = clique;
-                final_certificate = certificate;
-            }
-        }
-    } else {
-        MPI_Send(&local_info.clique_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-        std::cout << "RANK:" << rank << "Clique Size: " <<local_info.clique_size <<std::endl; 
-        int cert = static_cast<int>(local_info.certificate);
-        MPI_Send(&cert, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-        if (local_info.clique_size == best_size) {
-            MPI_Send(local_result[0].first.data(), local_info.clique_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
-        }
-        
+    if (rank == best_rank) {
+        // The process with the largest clique sends it to rank 0
+        MPI_Send(local_result.first.data(), best_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        int cert = static_cast<int>(local_result.second);
+        MPI_Send(&cert, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
     }
 
-    int best_cert;
     if (rank == 0) {
-        best_cert = static_cast<int>(final_certificate);
+        // Rank 0 receives the best clique
+        best_clique.resize(best_size);
+        MPI_Recv(best_clique.data(), best_size, MPI_INT, best_rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        int cert;
+        MPI_Recv(&cert, 1, MPI_INT, best_rank, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        final_certificate = static_cast<CERTIFICATE>(cert);
     }
-    MPI_Bcast(&best_cert, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    final_certificate = static_cast<CERTIFICATE>(best_cert);
-
-    best_clique.resize(best_size);
-    MPI_Bcast(best_clique.data(), best_size, MPI_INT, 0, MPI_COMM_WORLD);
 
     return {best_clique, final_certificate};
 }
+
 
 
 
