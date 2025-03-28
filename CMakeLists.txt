@@ -80,7 +80,6 @@ set(CLLIPPER_PLUS_SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/clique_optimization.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/clipperplus_heuristic.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/utils.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/parmetis_partition.cpp
 )
 
 # source files
