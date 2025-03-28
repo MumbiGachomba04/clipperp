@@ -52,6 +52,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
                 }
             }
             Graph subgraph = graph.induced(nodes);
+            std::cout << "RANK:" << rank << "Subgraph Size: " << subgraph.size() <<std::endl; 
 
             if (i == 0) {
                 local_result[0] = find_clique(subgraph);
@@ -69,6 +70,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         std::vector<int> buffer(size);
         MPI_Recv(buffer.data(), size, MPI_INT, 0, 444, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         subgraph = subgraph.vector_to_graph(buffer);
+        std::cout << "RANK:" << rank << "Subgraph Size: " << size <<std::endl; 
         local_result[0] = find_clique(subgraph);
     }
 
@@ -79,7 +81,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     local_info.clique_size = local_result[0].first.size();
     local_info.certificate = local_result[0].second;
-
+    std::cout << "RANK:" << rank << "Clique Size: " <<local_info.clique_size <<std::endl; 
     int best_size;
     MPI_Allreduce(&local_info.clique_size, &best_size, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
@@ -106,11 +108,13 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
     } else {
         MPI_Send(&local_info.clique_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        std::cout << "RANK:" << rank << "Clique Size: " <<local_info.clique_size <<std::endl; 
         int cert = static_cast<int>(local_info.certificate);
         MPI_Send(&cert, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         if (local_info.clique_size == best_size) {
             MPI_Send(local_result[0].first.data(), local_info.clique_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
+        
     }
 
     int best_cert;
