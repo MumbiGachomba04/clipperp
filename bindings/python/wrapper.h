@@ -13,12 +13,17 @@ class Wrapper {
   public:
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
       
+      MPI_Barrier(MPI_COMM_WORLD);
       double start_time = MPI_Wtime();
       auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
+      MPI_Barrier(MPI_COMM_WORLD);
       double end_time = MPI_Wtime();
+      int rank;
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+      if (rank == 0) {
 
       std::cout << "Elapsed time: " << end_time-start_time << " seconds" << std::endl;
-
+      }
       return std::make_tuple((long)clique.size(), clique, (int)certificate);
     }
 
