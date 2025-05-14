@@ -34,12 +34,14 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         int rem = num_vertices%num_parts;
         int count= 1;
         int part_count=0;
-
+        
         for (int i = 0; i < num_vertices; ++i) {
             if (count%local_size == 0){     
              part_count++;
+             if (part_count==num_parts){ part_count=num_parts-1;}
             }
             partition[i] = part_count;
+
             count++;
         }
 
@@ -69,6 +71,8 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     //  each process creates subgraph
     Graph local_graph = graph.induced(local_nodes);
+
+    std::cout << "Rank: " << rank << " Local graph size: " << local_graph.size() << std::endl;
 
     // Each process finds the max clique in its subgraph
     auto local_result = find_clique(local_graph);
