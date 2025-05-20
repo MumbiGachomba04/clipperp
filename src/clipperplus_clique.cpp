@@ -29,33 +29,37 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             xadj[i + 1] = xadj[i] + neighbors.size();
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
-
-        int local_size=num_vertices/num_parts;
-        int rem = num_vertices%num_parts;
-        int count= 1;
-        int part_count=0;
+// ---------------------MANUAL PARTITIONING----------------
+        // int local_size=num_vertices/num_parts;
+        // int rem = num_vertices%num_parts;
+        // int count= 1;
+        // int part_count=0;
         
-        for (int i = 0; i < num_vertices; ++i) {
-            if (count%local_size == 0){     
-             part_count++;
-             if (part_count==num_parts){ part_count=num_parts-1;}
-            }
-            partition[i] = part_count;
+        // for (int i = 0; i < num_vertices; ++i) {
+        //     if (count%local_size == 0){     
+        //      part_count++;
+        //      if (part_count==num_parts){ part_count=num_parts-1;}
+        //     }
+        //     partition[i] = part_count;
 
-            count++;
-        }
-
-        // idx_t options[METIS_NOPTIONS];
-        // METIS_SetDefaultOptions(options);
-        // options[METIS_OPTION_UFACTOR] = 500; 
-
-        // int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-        //                                  nullptr, nullptr, nullptr, &num_parts, 
-        //                                  nullptr, nullptr, options, &objval, partition.data());
-
-        // if (status != METIS_OK) {
-        //     throw std::runtime_error("METIS partitioning failed");
+        //     count++;
         // }
+// ---------------------END OF MANUAL PARTITIONING-------------------
+
+// ---------------------METIS PARTITIONING---------------------------
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        options[METIS_OPTION_UFACTOR] = 500; 
+
+        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+                                         nullptr, nullptr, nullptr, &num_parts, 
+                                         nullptr, nullptr, options, &objval, partition.data());
+
+        if (status != METIS_OK) {
+            throw std::runtime_error("METIS partitioning failed");
+        }
+// ---------------------END OF METIS  PARTITIONING----------------
+
     }
 
     // Broadcast partition to all processes . no need to send csr
