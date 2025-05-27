@@ -4,10 +4,10 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <vector>
-#include "include/clipperplus/clipperplus_graph.h"
-#include "include/clipperplus/clipperplus_clique.h"
-#include "include/clipperplus/clipperplus_heuristic.h"
-#include "include/clipperplus/clique_optimization.h"
+#include "../include/clipperplus/clipperplus_graph.h"
+#include "../include/clipperplus/clipperplus_clique.h"
+#include "../include/clipperplus/clipperplus_heuristic.h"
+#include "../include/clipperplus/clique_optimization.h"
 
 using namespace std;
 
