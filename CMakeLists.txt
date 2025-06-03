@@ -34,7 +34,7 @@ cmake_policy(SET CMP0135 NEW)
 find_package(Eigen3 REQUIRED)
 message(STATUS "Eigen Version: ${EIGEN3_VERSION_STRING} ${EIGEN3_VERSION}")
 
-set(OpenMP_C_FLAGS "-fopenmp")
+set(OpenMP_C_FLAGS "-qopenmp")
 set(OpenMP_CXX_FLAGS "-fopenmp")
 set(OpenMP_C_LIB_NAMES "gomp")
 set(OpenMP_CXX_LIB_NAMES "gomp")
@@ -42,7 +42,7 @@ set(OpenMP_gomp_LIBRARY "/apps/GPP/GCC/13.2.0/lib/../lib64/libgomp.so")
 
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
-find_package(METIS REQUIRED)
+
 
 set(METIS_DIR "/apps/GPP/EASYBUILD/software/METIS/5.1.0-GCCcore-13.2.0")
 find_library(METIS_LIB metis PATHS ${METIS_DIR}/lib)
@@ -80,6 +80,7 @@ set(CLLIPPER_PLUS_SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/src/clique_optimization.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/clipperplus_heuristic.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/utils.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/demo_clipper.cpp
 )
 
 # source files
