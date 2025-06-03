@@ -20,7 +20,7 @@ option(DEBUG_OPTIM_FLAG "Enable debugging clipper optimization" ON)
 
 option(BUILD_PMC_HEU "Build PMC heuristic" ON)
 option(BUILD_BINDINGS_MATLAB "Build MATLAB bindings" OFF)
-option(BUILD_BINDINGS_PYTHON "Build Python bindings" OFF)
+option(BUILD_BINDINGS_PYTHON "Build Python bindings" ON)
 option(BUILD_TESTS "Build testsuite" OFF)
 
 
@@ -42,12 +42,12 @@ set(OpenMP_gomp_LIBRARY "/apps/GPP/GCC/13.2.0/lib/../lib64/libgomp.so")
 
 find_package(OpenMP REQUIRED)
 find_package(MPI REQUIRED)
+find_package(METIS REQUIRED)
 
-set(PARMETIS_DIR "/apps/GPP/PARMETIS/4.0.3/GCC/OPENMPI")
-find_library(PARMETIS_LIB parmetis PATHS ${PARMETIS_DIR}/lib)
-find_library(METIS_LIB metis PATHS ${PARMETIS_DIR}/lib)
-find_path(PARMETIS_INCLUDE_DIR parmetis.h PATHS ${PARMETIS_DIR}/include)
-include_directories(${PARMETIS_INCLUDE_DIR})
+set(METIS_DIR "/apps/GPP/EASYBUILD/software/METIS/5.1.0-GCCcore-13.2.0")
+find_library(METIS_LIB metis PATHS ${METIS_DIR}/lib)
+find_path(METIS_INCLUDE_DIR metis.h PATHS ${METIS_DIR}/include)
+include_directories(${METIS_INCLUDE_DIR})
 
 if(BUILD_TESTS)
   FetchContent_Declare(
@@ -95,7 +95,7 @@ target_include_directories(clipperplus PUBLIC
 target_link_libraries(clipperplus PUBLIC Eigen3::Eigen)
 target_link_libraries(clipperplus PUBLIC OpenMP::OpenMP_CXX)
 target_link_libraries(clipperplus PUBLIC MPI::MPI_CXX)
-target_link_libraries(clipperplus PUBLIC ${PARMETIS_LIB} ${METIS_LIB})
+target_link_libraries(clipperplus PUBLIC ${METIS_LIB})
 # debug flag  
 if(DEBUG_FLAG)
         message(STATUS "Enabling debug flag")

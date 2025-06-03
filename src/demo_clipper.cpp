@@ -86,16 +86,19 @@ int main(int argc, char* argv[]) {
     Eigen::SparseMatrix<double> sparse_adj = read_sparse_adjacency_matrix(argv[1]);
     Eigen::MatrixXd adj = Eigen::MatrixXd(sparse_adj);  // if clipperplus::Graph expects dense
 
-
+    double start, end; 
     // Construct graph
     clipperplus::Graph G(adj);
     std::pair<std::vector<int>, clipperplus::CERTIFICATE> result;
+    start= MPI_Wtime(); 
     if(numproc == 1) {
 	result  = find_clique(G);
     } 
     else {
         result  =  parallel_find_clique(G);
     }
+    end = MPI_Wtime(); 
+    std::cout<< "clique finding took " << end-start << " seconds" << std::endl; 
     std::vector<int> clique = result.first;
     clipperplus::CERTIFICATE cert = result.second;
 
