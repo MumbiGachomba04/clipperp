@@ -16,7 +16,7 @@ class Wrapper {
       MPI_Comm_size(MPI_COMM_WORLD, &size);
       std::vector<clipperplus::Node> clique;
       clipperplus::CERTIFICATE certificate;
-      std::pair<std::vector<Node>, CERTIFICATE> result;
+      std::pair<std::vector<clipperplus::Node>, clipperplus::CERTIFICATE> result;
       MPI_Barrier(MPI_COMM_WORLD);
       double start_time = MPI_Wtime();
       if (size > 1){
