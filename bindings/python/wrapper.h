@@ -14,14 +14,14 @@ class Wrapper {
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
       int size;
       MPI_Comm_size(MPI_COMM_WORLD, &size);
-      
+      std::vector<int> clique;
+      int certificate;
       MPI_Barrier(MPI_COMM_WORLD);
       double start_time = MPI_Wtime();
-      if (size > 1){
-      auto [clique, certificate] = clipperplus::parallel_find_clique(adj);
-      }
-      else {
-        auto [clique, certificate] = clipperplus::find_clique(adj);
+      if (size > 1) {
+          std::tie(clique, certificate) = clipperplus::parallel_find_clique(adj);
+      } else {
+          std::tie(clique, certificate) = clipperplus::find_clique(adj);
       }
       MPI_Barrier(MPI_COMM_WORLD);
       double end_time = MPI_Wtime();
