@@ -81,10 +81,10 @@ int main(int argc, char* argv[]) {
     int numproc;
     MPI_Comm_size(MPI_COMM_WORLD,&numproc);
     // Load adjacency matrix
-   // Eigen::MatrixXd adj = read_adjacency_matrix(filename);
+    Eigen::MatrixXd adj = read_adjacency_matrix(filename);
 
-    Eigen::SparseMatrix<double> sparse_adj = read_sparse_adjacency_matrix(argv[1]);
-    Eigen::MatrixXd adj = Eigen::MatrixXd(sparse_adj);  // if clipperplus::Graph expects dense
+    // Eigen::SparseMatrix<double> sparse_adj = read_sparse_adjacency_matrix(argv[1]);
+    // Eigen::MatrixXd adj = Eigen::MatrixXd(sparse_adj);  // if clipperplus::Graph expects dense
 
     double start, end; 
     // Construct graph
