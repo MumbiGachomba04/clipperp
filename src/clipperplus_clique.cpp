@@ -51,7 +51,10 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_UFACTOR] = 500; 
 
-        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+        // int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+        //                                  nullptr, nullptr, nullptr, &num_parts, 
+        //                                  nullptr, nullptr, options, &objval, partition.data());
+        int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
                                          nullptr, nullptr, nullptr, &num_parts, 
                                          nullptr, nullptr, options, &objval, partition.data());
 
@@ -72,7 +75,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             local_nodes.push_back(i);
         }
     }
-
+ 
     //  each process creates subgraph
     Graph local_graph = graph.induced(local_nodes);
 
