@@ -73,8 +73,9 @@ int main(int argc, char* argv[]) {
     std::string filename = argv[1];
 
     MPI_Init(NULL,NULL);
-    int numproc;
+    int numproc,rank;
     MPI_Comm_size(MPI_COMM_WORLD,&numproc);
+     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     // Load adjacency matrix
     Eigen::MatrixXd adj = read_adjacency_matrix(filename);
 
