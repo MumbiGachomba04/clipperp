@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <iterator>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <vector>
