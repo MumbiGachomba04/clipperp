@@ -44,29 +44,23 @@ Eigen::SparseMatrix<double> read_sparse_adjacency_matrix(const std::string& file
 
 // Reads an adjacency matrix from a text file into Eigen::MatrixXd
 Eigen::MatrixXd read_adjacency_matrix(const std::string& filename) {
-    std::ifstream infile(filename);
-    std::string line;
-    std::vector<std::vector<double>> data;
+   std::ifstream in(filename);
+    if (!in) throw std::runtime_error("Cannot open " + filename);
 
-    while (std::getline(infile, line)) {
+    std::vector<std::vector<double>> rows;
+    std::string                      line;
+    while (std::getline(in, line)) {
         std::istringstream iss(line);
-        std::vector<double> row;
-        double val;
-        while (iss >> val) {
-            row.push_back(val);
-        }
-        data.push_back(row);
+        rows.emplace_back(std::istream_iterator<double>{iss},
+                          std::istream_iterator<double>{});
     }
+    const std::size_t n = rows.size();
+    if (n == 0) return {};
 
-    int rows = data.size();
-    int cols = rows > 0 ? data[0].size() : 0;
-    Eigen::MatrixXd matrix(rows, cols);
-
-    for (int i = 0; i < rows; ++i)
-        for (int j = 0; j < cols; ++j)
-            matrix(i, j) = data[i][j];
-
-    return matrix;
+    Eigen::MatrixXd mat(n, n);
+    for (std::size_t r = 0; r < n; ++r)
+        for (std::size_t c = 0; c < n; ++c) mat(r, c) = rows[r][c];
+    return mat;
 }
 
 int main(int argc, char* argv[]) {
@@ -98,15 +92,14 @@ int main(int argc, char* argv[]) {
         result  =  parallel_find_clique(G);
     }
     end = MPI_Wtime(); 
+    if (rank == 0)  {
     std::cout<< "clique finding took " << end-start << " seconds" << std::endl; 
     std::vector<int> clique = result.first;
     clipperplus::CERTIFICATE cert = result.second;
 
-    std::cout << endl<< endl << "Heuristic clique of size " << clique.size() << ": ";
-    /*for (int v : clique) {
-        std::cout << v << " ";
-    }*/
-    std::cout << std::endl;
+    std::cout << endl<< endl << "Heuristic clique of size " << clique.size() << std::endl;
+    }
+ 
 
     MPI_Finalize();
     return 0;
