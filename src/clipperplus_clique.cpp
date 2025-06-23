@@ -80,6 +80,53 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
     }
  
+// ---------------------OVERLAPPING ----------------
+    // compute degrees & select top-N high degree nodes
+    std::vector<int> degrees = graph.degrees();
+    int N = std::max(1, static_cast<int>(0.05 * num_vertices));  // 5% top nodes
+
+    std::vector<int> top_degree_nodes;
+    for (int i = 0; i < N; ++i) {
+        auto max_it = std::max_element(degrees.begin(), degrees.end());
+        int max_idx = std::distance(degrees.begin(), max_it);
+        top_degree_nodes.push_back(max_idx);
+        degrees[max_idx] = -1; // mark as used
+    }
+
+    // Duplicate top-N high degree nodes into all partitions
+    // Log:
+    std::cout << "\n=== Rank: " << rank << " Top-" << N << " degree nodes (copied) ===\n";
+    for (int v : top_degree_nodes) {
+        int deg = graph.degree(v);
+        int original_partition = partition[v];
+        bool is_duplicate = (original_partition != rank);
+
+        std::cout << "Node: " << v
+            << " | Degree: " << deg
+            << " | Original Part: " << original_partition
+            << " | Current Rank: " << rank
+            << " | " << (is_duplicate ? "DUPLICATE" : "ORIGINAL")
+            << std::endl;
+    }
+    std::cout << "==============================================" << std::endl;
+
+    // push_back:
+    for (int v : top_degree_nodes) {
+        if (std::find(local_nodes.begin(), local_nodes.end(), v) == local_nodes.end()) {
+            local_nodes.push_back(v);
+        }
+    }
+
+
+    std::cout << "\n==============================================" << std::endl;
+
+
+    if (local_nodes.empty()) {
+        std::cout << "Rank: " << rank << " WARNING: No nodes assigned to this process! Skipping." << std::endl;
+        return { {}, CERTIFICATE::NONE };
+    }
+// ---------------------END OF OVERLAPPING ----------------
+
     //  each process creates subgraph
     Graph local_graph = graph.induced(local_nodes);
 
