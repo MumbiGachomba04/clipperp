@@ -33,39 +33,39 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
 // ---------------------MANUAL PARTITIONING----------------
-        // int local_size=num_vertices/num_parts;
-        // int rem = num_vertices%num_parts;
-        // int count= 1;
-        // int part_count=0;
+        int local_size=num_vertices/num_parts;
+        int rem = num_vertices%num_parts;
+        int count= 1;
+        int part_count=0;
         
-        // for (int i = 0; i < num_vertices; ++i) {
-        //     if (count%local_size == 0){     
-        //      part_count++;
-        //      if (part_count==num_parts){ part_count=num_parts-1;}
-        //     }
-        //     partition[i] = part_count;
+        for (int i = 0; i < num_vertices; ++i) {
+            if (count%local_size == 0){     
+             part_count++;
+             if (part_count==num_parts){ part_count=num_parts-1;}
+            }
+            partition[i] = part_count;
 
-        //     count++;
-        // }
+            count++;
+        }
 // ---------------------END OF MANUAL PARTITIONING-------------------
 
 // ---------------------METIS PARTITIONING---------------------------
-        idx_t options[METIS_NOPTIONS];
-        METIS_SetDefaultOptions(options);
-        options[METIS_OPTION_UFACTOR] = 500; 
-        options[METIS_OPTION_SEED] = 2;
+//         idx_t options[METIS_NOPTIONS];
+//         METIS_SetDefaultOptions(options);
+//         options[METIS_OPTION_UFACTOR] = 500; 
+//         options[METIS_OPTION_SEED] = 2;
 
-        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-                                         vwgt.data(), nullptr, nullptr, &num_parts, 
-                                         nullptr, nullptr, options, &objval, partition.data());
-        // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-        //                                  nullptr, nullptr, nullptr, &num_parts, 
-        //                                  nullptr, nullptr, options, &objval, partition.data());
+//         int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+//                                          vwgt.data(), nullptr, nullptr, &num_parts, 
+//                                          nullptr, nullptr, options, &objval, partition.data());
+//         // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+//         //                                  nullptr, nullptr, nullptr, &num_parts, 
+//         //                                  nullptr, nullptr, options, &objval, partition.data());
 
-        if (status != METIS_OK) {
-            throw std::runtime_error("METIS partitioning failed");
-        }
-// ---------------------END OF METIS  PARTITIONING----------------
+//         if (status != METIS_OK) {
+//             throw std::runtime_error("METIS partitioning failed");
+//         }
+// // ---------------------END OF METIS  PARTITIONING----------------
 
     }
 
