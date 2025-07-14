@@ -1,4 +1,4 @@
-﻿#include "clipperplus/clipperplus_heuristic.h"
+#include "clipperplus/clipperplus_heuristic.h"
 #include "clipperplus/clipperplus_clique.h"
 
 
@@ -24,9 +24,12 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     // rank 0 partitions the graph
     if (rank == 0) {
+        std::cout<< "GRAPH SIZE : " << num_vertices << std::endl;
+        std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
         for (int i = 0; i < num_vertices; ++i) {
             const auto &neighbors = graph.neighbors(i);
-            xadj[i + 1] = xadj[i] + neighbors.size();
+            vwgt[i] = neighbors.size();
+            xadj[i + 1] = xadj[i] + vwgt[i];
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
 // ---------------------MANUAL PARTITIONING----------------
@@ -50,13 +53,14 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_UFACTOR] = 500; 
+        options[METIS_OPTION_SEED] = 1;
 
-        // int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+                                         vwgt.data(), nullptr, nullptr, &num_parts, 
+                                         nullptr, nullptr, options, &objval, partition.data());
+        // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
         //                                  nullptr, nullptr, nullptr, &num_parts, 
         //                                  nullptr, nullptr, options, &objval, partition.data());
-        int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-                                         nullptr, nullptr, nullptr, &num_parts, 
-                                         nullptr, nullptr, options, &objval, partition.data());
 
         if (status != METIS_OK) {
             throw std::runtime_error("METIS partitioning failed");
@@ -68,63 +72,65 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     // Broadcast partition to all processes . no need to send csr
     MPI_Bcast(partition.data(), num_vertices, MPI_INT, 0, MPI_COMM_WORLD);
 
-            // Each process determines its subset of nodes
-            std::vector<Node> local_nodes;
-            for (int i = 0; i < num_vertices; ++i) {
-                if (partition[i] == rank) {
-                    local_nodes.push_back(i);
-                }
+    // Each process determines its subset of nodes
+    std::vector<Node> local_nodes;
+    for (int i = 0; i < num_vertices; ++i) {
+        if (partition[i] == rank) {
+            local_nodes.push_back(i);
+        }
+    }
+ 
+    // ---------------------OVERLAPPING ----------------
+    // Set to store candidate overlap nodes:
+    // i.e., neighbors of local nodes that belong to other partitions
+    std::unordered_set<Node> candidate_overlap;
+
+    for (Node v : local_nodes) {
+        for (Node n : graph.neighbors(v)) {
+            if (partition[n] != rank) {
+                // If the neighbor `n` belongs to a different partition,
+                // then it is a candidate for overlap
+                candidate_overlap.insert(n);
             }
+        }
+    }
 
-            // ---- NEW: compute degrees & select top-N high degree nodes ----
-            std::vector<int> degrees = graph.degrees();
-            int N = std::max(1, static_cast<int>(0.05 * num_vertices));  // 5% top nodes
+    // Vector to store each candidate node along with its degree (number of neighbors)
+    std::vector<std::pair<Node, int>> overlap_with_degrees;
 
-            std::vector<int> top_degree_nodes;
-            for (int i = 0; i < N; ++i) {
-                auto max_it = std::max_element(degrees.begin(), degrees.end());
-                int max_idx = std::distance(degrees.begin(), max_it);
-                top_degree_nodes.push_back(max_idx);
-                degrees[max_idx] = -1; // mark as used
-            }
+    for (Node n : candidate_overlap) {
+        int degree = graph.neighbors(n).size();
+        // emplace_back constructs the pair directly in-place in the vector for performance
+        overlap_with_degrees.emplace_back(n, degree); 
+    }
 
-            // Duplicate top-N high degree nodes into all partitions
-            // 1️⃣ Log:
-            std::cout << "\n=== Rank: " << rank << " Top-" << N << " degree nodes (copied) ===\n";
-            for (int v : top_degree_nodes) {
-                int deg = graph.degree(v);
-                int original_partition = partition[v];
-                bool is_duplicate = (original_partition != rank);
+    // Sort the candidate nodes in descending order by degree
+    // Higher-degree nodes are more likely to be part of the global clique
+    std::sort(overlap_with_degrees.begin(), overlap_with_degrees.end(),
+        [](const std::pair<Node, int>& a, const std::pair<Node, int>& b) {
+            return a.second > b.second;
+        });
 
-                std::cout << "Node: " << v
-                    << " | Degree: " << deg
-                    << " | Original Part: " << original_partition
-                    << " | Current Rank: " << rank
-                    << " | " << (is_duplicate ? "DUPLICATE" : "ORIGINAL")
-                    << std::endl;
-            }
-            std::cout << "==============================================" << std::endl;
+    // Select the top 10% of candidate nodes based on degree (at least 1 node)
+    int top_nodes = std::max(1, static_cast<int>(overlap_with_degrees.size() * 0.1));
 
-            // 2️⃣ push_back:
-            for (int v : top_degree_nodes) {
-                if (std::find(local_nodes.begin(), local_nodes.end(), v) == local_nodes.end()) {
-                    local_nodes.push_back(v);
-                }
-            }
+    // Vector to store the final selected overlap nodes
+    std::vector<Node> selected_overlap;
+    selected_overlap.reserve(top_nodes); // Reserve space for efficiency
 
+    // Pick the top high-degree overlap candidates
+    for (int i = 0; i < top_nodes && i < overlap_with_degrees.size(); ++i) {
+        selected_overlap.push_back(overlap_with_degrees[i].first);
+    }
 
-            std::cout << "\n==============================================" << std::endl;
+    // Add the selected overlap nodes to the local node set (i.e., copy them)
+    for (Node n : selected_overlap) {
+        local_nodes.push_back(n); // Actual inclusion into local graph
+    }
+    // ---------------------END OF OVERLAPPING ----------------
 
-
-            if (local_nodes.empty()) {
-                std::cout << "Rank: " << rank << " WARNING: No nodes assigned to this process! Skipping." << std::endl;
-                return { {}, CERTIFICATE::NONE };
-            }
-
-            // each process creates subgraph
-            Graph local_graph = graph.induced(local_nodes);
-            std::cout << "Rank: " << rank << " Local nodes after copy: " << local_nodes.size() << std::endl;
-
+    //  each process creates subgraph
+    Graph local_graph = graph.induced(local_nodes);
 
     std::cout << "Rank: " << rank << " Local graph size: " << local_graph.size() << std::endl;
 
@@ -178,13 +184,6 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
     best_clique.resize(best_size);
     MPI_Bcast(best_clique.data(), best_size, MPI_INT, 0, MPI_COMM_WORLD);
-
-    std::cout << "Rank: " << rank << " Local clique size: " << local_clique_size << std::endl;
-    std::cout << "Rank: " << rank << " Final clique members: ";
-    for (auto v : local_result.first) {
-        std::cout << v << " ";
-    }
-    std::cout << std::endl;
 
     return {best_clique, final_certificate};
 }
