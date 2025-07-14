@@ -80,52 +80,54 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
     }
  
-// ---------------------OVERLAPPING ----------------
-    // compute degrees & select top-N high degree nodes
-    std::vector<int> degrees = graph.degrees();
-    int N = std::max(1, static_cast<int>(0.05 * num_vertices));  // 5% top nodes
+    // ---------------------OVERLAPPING ----------------
+    // Set to store candidate overlap nodes:
+    // i.e., neighbors of local nodes that belong to other partitions
+    std::unordered_set<Node> candidate_overlap;
 
-    std::vector<int> top_degree_nodes;
-    for (int i = 0; i < N; ++i) {
-        auto max_it = std::max_element(degrees.begin(), degrees.end());
-        int max_idx = std::distance(degrees.begin(), max_it);
-        top_degree_nodes.push_back(max_idx);
-        degrees[max_idx] = -1; // mark as used
-    }
-
-    // Duplicate top-N high degree nodes into all partitions
-    // Log:
-    std::cout << "\n=== Rank: " << rank << " Top-" << N << " degree nodes (copied) ===\n";
-    for (int v : top_degree_nodes) {
-        int deg = graph.degree(v);
-        int original_partition = partition[v];
-        bool is_duplicate = (original_partition != rank);
-
-        std::cout << "Node: " << v
-            << " | Degree: " << deg
-            << " | Original Part: " << original_partition
-            << " | Current Rank: " << rank
-            << " | " << (is_duplicate ? "DUPLICATE" : "ORIGINAL")
-            << std::endl;
-    }
-    std::cout << "==============================================" << std::endl;
-
-    // push_back:
-    for (int v : top_degree_nodes) {
-        if (std::find(local_nodes.begin(), local_nodes.end(), v) == local_nodes.end()) {
-            local_nodes.push_back(v);
+    for (Node v : local_nodes) {
+        for (Node n : graph.neighbors(v)) {
+            if (partition[n] != rank) {
+                // If the neighbor `n` belongs to a different partition,
+                // then it is a candidate for overlap
+                candidate_overlap.insert(n);
+            }
         }
     }
 
+    // Vector to store each candidate node along with its degree (number of neighbors)
+    std::vector<std::pair<Node, int>> overlap_with_degrees;
 
-    std::cout << "\n==============================================" << std::endl;
-
-
-    if (local_nodes.empty()) {
-        std::cout << "Rank: " << rank << " WARNING: No nodes assigned to this process! Skipping." << std::endl;
-        return { {}, CERTIFICATE::NONE };
+    for (Node n : candidate_overlap) {
+        int degree = graph.neighbors(n).size();
+        // emplace_back constructs the pair directly in-place in the vector for performance
+        overlap_with_degrees.emplace_back(n, degree); 
     }
-// ---------------------END OF OVERLAPPING ----------------
+
+    // Sort the candidate nodes in descending order by degree
+    // Higher-degree nodes are more likely to be part of the global clique
+    std::sort(overlap_with_degrees.begin(), overlap_with_degrees.end(),
+        [](const std::pair<Node, int>& a, const std::pair<Node, int>& b) {
+            return a.second > b.second;
+        });
+
+    // Select the top 10% of candidate nodes based on degree (at least 1 node)
+    int top_nodes = std::max(1, static_cast<int>(overlap_with_degrees.size() * 0.1));
+
+    // Vector to store the final selected overlap nodes
+    std::vector<Node> selected_overlap;
+    selected_overlap.reserve(top_nodes); // Reserve space for efficiency
+
+    // Pick the top high-degree overlap candidates
+    for (int i = 0; i < top_nodes && i < overlap_with_degrees.size(); ++i) {
+        selected_overlap.push_back(overlap_with_degrees[i].first);
+    }
+
+    // Add the selected overlap nodes to the local node set (i.e., copy them)
+    for (Node n : selected_overlap) {
+        local_nodes.push_back(n); // Actual inclusion into local graph
+    }
+    // ---------------------END OF OVERLAPPING ----------------
 
     //  each process creates subgraph
     Graph local_graph = graph.induced(local_nodes);
