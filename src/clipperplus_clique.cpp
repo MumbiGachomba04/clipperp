@@ -7,7 +7,7 @@
 namespace clipperplus 
 {
 
-std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph, bool partitioning)
+std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph, int partitioning)
 {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -36,7 +36,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         }
   double st, en;
  
-    if (partitioning) {
+    if (partitioning == 1) {
 // ---------------------METIS PARTITIONING---------------------------
      st= MPI_Wtime(); 
         idx_t options[METIS_NOPTIONS];

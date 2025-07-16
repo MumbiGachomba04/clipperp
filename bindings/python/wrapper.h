@@ -13,7 +13,7 @@ class Wrapper {
   public:
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
       int size;
-      bool partitioning = 1;
+      int partitioning = 1;
       MPI_Comm_size(MPI_COMM_WORLD, &size);
       std::vector<clipperplus::Node> clique;
       clipperplus::CERTIFICATE certificate;
