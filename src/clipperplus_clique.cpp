@@ -39,7 +39,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_UFACTOR] = 500; 
-        options[METIS_OPTION_SEED] = 2;
+        options[METIS_OPTION_SEED] = 42;
 
         int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
                                          vwgt.data(), nullptr, nullptr, &num_parts, 
