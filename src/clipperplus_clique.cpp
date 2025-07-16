@@ -12,9 +12,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int partitioning_flag = partitioning ? 1 : 0;
-    MPI_Bcast(&partitioning_flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    partitioning = (partitioning_flag == 1);
+   
 
     int num_vertices = graph.size();
     int num_parts = size;  // Each process handles one partition
@@ -28,18 +26,20 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     // rank 0 partitions the graph
     if (rank == 0) {
         std::cout<< "GRAPH SIZE : " << num_vertices << std::endl;
-        std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
+        std::cout<< "USE METIS?? : " << partitioning << std::endl;
+
         for (int i = 0; i < num_vertices; ++i) {
             const auto &neighbors = graph.neighbors(i);
             vwgt[i] = neighbors.size();
             xadj[i + 1] = xadj[i] + vwgt[i];
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
-  double start, end;
+  double st, en;
  
     if (partitioning) {
 // ---------------------METIS PARTITIONING---------------------------
-     start= MPI_Wtime(); 
+     st= MPI_Wtime(); 
+         std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_UFACTOR] = 500; 
@@ -55,15 +55,15 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         if (status != METIS_OK) {
             throw std::runtime_error("METIS partitioning failed");
         }
-    end = MPI_Wtime(); 
-    std::cout<< "Metis partitioning took " << end-start << " seconds" << std::endl; 
+    en = MPI_Wtime(); 
+    std::cout<< "Metis partitioning took ---------------- " << en-st << " seconds" << std::endl; 
 // // ---------------------END OF METIS  PARTITIONING----------------
     }
 
 
 else {
 // ---------------------MANUAL PARTITIONING----------------
-     start= MPI_Wtime(); 
+     st= MPI_Wtime(); 
         int local_size=num_vertices/num_parts;
         int rem = num_vertices%num_parts;
         int count= 1;
@@ -78,8 +78,8 @@ else {
 
             count++;
         }
-    end = MPI_Wtime();
-        std::cout<< "Natural partitioning took " << end-start << " seconds" << std::endl; 
+    en = MPI_Wtime();
+        std::cout<< "Natural partitioning took " << en-st << " seconds" << std::endl; 
 // ---------------------END OF MANUAL PARTITIONING-------------------
 }
 
