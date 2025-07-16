@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
     std::pair<std::vector<int>, clipperplus::CERTIFICATE> result;
     start= MPI_Wtime(); 
     if(numproc == 1) {
-	   result  = find_clique(G,use_metis);
+	   result  = find_clique(G);
     } 
     else {
         result  =  parallel_find_clique(G,use_metis);

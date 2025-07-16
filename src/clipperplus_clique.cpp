@@ -148,7 +148,7 @@ else {
 
 
 
-std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph, bool partitioning)
+std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
 {
     int n = graph.size();
 

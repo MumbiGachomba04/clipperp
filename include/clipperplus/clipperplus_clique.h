@@ -25,7 +25,7 @@ enum class CERTIFICATE
     CHROMATIC_BOUND
 };
 
-std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph,bool partitioning);
+std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph);
 std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph,bool partitioning);
 
 } 
