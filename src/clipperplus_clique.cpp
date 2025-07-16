@@ -27,10 +27,9 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     if (rank == 0) {
         std::cout<< "GRAPH SIZE : " << num_vertices << std::endl;
         std::cout<< "USE METIS?? : " << partitioning << std::endl;
-
+        std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
         for (int i = 0; i < num_vertices; ++i) {
             const auto &neighbors = graph.neighbors(i);
-             std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
             vwgt[i] = neighbors.size();
             xadj[i + 1] = xadj[i] + vwgt[i];
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
