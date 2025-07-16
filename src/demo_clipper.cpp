@@ -65,12 +65,13 @@ Eigen::MatrixXd read_adjacency_matrix(const std::string& filename) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>" << std::endl;
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>  <0 for natural partitioning or 1 for using metis>" << std::endl;
         return 1;
     }
 
     std::string filename = argv[1];
+    bool use_metis =  argv[2];
 
     MPI_Init(NULL,NULL);
     int numproc,rank;
@@ -88,10 +89,10 @@ int main(int argc, char* argv[]) {
     std::pair<std::vector<int>, clipperplus::CERTIFICATE> result;
     start= MPI_Wtime(); 
     if(numproc == 1) {
-	result  = find_clique(G);
+	   result  = find_clique(G,use_metis);
     } 
     else {
-        result  =  parallel_find_clique(G);
+        result  =  parallel_find_clique(G,use_metis);
     }
     end = MPI_Wtime(); 
     if (rank == 0)  {

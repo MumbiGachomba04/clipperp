@@ -7,7 +7,7 @@
 namespace clipperplus 
 {
 
-std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph)
+std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph, bool partitioning)
 {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -32,6 +32,29 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             xadj[i + 1] = xadj[i] + vwgt[i];
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
+
+    if (partitioning) {
+// ---------------------METIS PARTITIONING---------------------------
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        options[METIS_OPTION_UFACTOR] = 500; 
+        options[METIS_OPTION_SEED] = 2;
+
+        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+                                         vwgt.data(), nullptr, nullptr, &num_parts, 
+                                         nullptr, nullptr, options, &objval, partition.data());
+        // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+        //                                  nullptr, nullptr, nullptr, &num_parts, 
+        //                                  nullptr, nullptr, options, &objval, partition.data());
+           std::cout << "OBJVAL: " << objval << std::endl;
+        if (status != METIS_OK) {
+            throw std::runtime_error("METIS partitioning failed");
+        }
+// // ---------------------END OF METIS  PARTITIONING----------------
+    }
+
+
+else {
 // ---------------------MANUAL PARTITIONING----------------
         int local_size=num_vertices/num_parts;
         int rem = num_vertices%num_parts;
@@ -48,24 +71,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             count++;
         }
 // ---------------------END OF MANUAL PARTITIONING-------------------
-
-// ---------------------METIS PARTITIONING---------------------------
-//         idx_t options[METIS_NOPTIONS];
-//         METIS_SetDefaultOptions(options);
-//         options[METIS_OPTION_UFACTOR] = 500; 
-//         options[METIS_OPTION_SEED] = 2;
-
-//         int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-//                                          vwgt.data(), nullptr, nullptr, &num_parts, 
-//                                          nullptr, nullptr, options, &objval, partition.data());
-//         // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-//         //                                  nullptr, nullptr, nullptr, &num_parts, 
-//         //                                  nullptr, nullptr, options, &objval, partition.data());
-
-//         if (status != METIS_OK) {
-//             throw std::runtime_error("METIS partitioning failed");
-//         }
-// // ---------------------END OF METIS  PARTITIONING----------------
+}
 
     }
 
@@ -142,7 +148,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
 
 
-std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph)
+std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph, bool partitioning)
 {
     int n = graph.size();
 
