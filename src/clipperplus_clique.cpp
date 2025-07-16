@@ -12,6 +12,9 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int partitioning_flag = partitioning ? 1 : 0;
+    MPI_Bcast(&partitioning_flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    partitioning = (partitioning_flag == 1);
 
     int num_vertices = graph.size();
     int num_parts = size;  // Each process handles one partition
