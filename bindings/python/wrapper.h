@@ -13,6 +13,7 @@ class Wrapper {
   public:
     static std::tuple<long, std::vector<int>, int> clipperplus_clique_wrapper(const Eigen::MatrixXd& adj){
       int size;
+      bool partitioning = 1;
       MPI_Comm_size(MPI_COMM_WORLD, &size);
       std::vector<clipperplus::Node> clique;
       clipperplus::CERTIFICATE certificate;
@@ -20,7 +21,7 @@ class Wrapper {
       MPI_Barrier(MPI_COMM_WORLD);
       double start_time = MPI_Wtime();
       if (size > 1){
-      result = clipperplus::parallel_find_clique(adj);
+      result = clipperplus::parallel_find_clique(adj,partitioning);
       }
       else {
         result = clipperplus::find_clique(adj);

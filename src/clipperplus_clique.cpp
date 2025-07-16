@@ -32,7 +32,8 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             xadj[i + 1] = xadj[i] + vwgt[i];
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
-
+  double start, end;
+  start= MPI_Wtime(); 
     if (partitioning) {
 // ---------------------METIS PARTITIONING---------------------------
         idx_t options[METIS_NOPTIONS];
@@ -50,6 +51,8 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
         if (status != METIS_OK) {
             throw std::runtime_error("METIS partitioning failed");
         }
+    end = MPI_Wtime(); 
+    std::cout<< "Metis partitioning took " << end-start << " seconds" << std::endl; 
 // // ---------------------END OF METIS  PARTITIONING----------------
     }
 
@@ -70,6 +73,8 @@ else {
 
             count++;
         }
+        end = MPI_Wtime();
+        std::cout<< "Natural partitioning took " << end-start << " seconds" << std::endl; 
 // ---------------------END OF MANUAL PARTITIONING-------------------
 }
 
