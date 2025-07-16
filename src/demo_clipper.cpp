@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <sstream>
 #include <fstream>
 #include <iterator>
@@ -69,6 +69,21 @@ int main(int argc, char* argv[]) {
         std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>" << std::endl;
         return 1;
     }
+
+    // ---------------------------------------------
+    // Command line argument parser:
+    /*  -p=0 : MANUAL partitioning mode
+        -p=1 : METIS partitioning mode
+        -r : Enable recursive metis
+        -u=<value> : Set uFactor value
+        -s=<value> : Set random seed value
+
+        -o : Enable overlapping -> Default -n
+        -g : Set overlap mode to GENERAL
+        -n : Set overlap mode to NEIGHBOR
+        -r=<value> : Set overlap ratio, e.g. -r=0.05 for %5
+    */
+    // ---------------------------------------------
 
     for (int i = 2; i < argc; ++i) 
     {
