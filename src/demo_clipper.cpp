@@ -71,8 +71,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::string filename = argv[1];
-    bool use_metis =  argv[2];
-
+    bool use_metis =  std::stoi(argv[2]) != 0;
     MPI_Init(NULL,NULL);
     int numproc,rank;
     MPI_Comm_size(MPI_COMM_WORLD,&numproc);

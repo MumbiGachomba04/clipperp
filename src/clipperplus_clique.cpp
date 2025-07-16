@@ -33,9 +33,10 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
             adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
   double start, end;
-  start= MPI_Wtime(); 
+ 
     if (partitioning) {
 // ---------------------METIS PARTITIONING---------------------------
+     start= MPI_Wtime(); 
         idx_t options[METIS_NOPTIONS];
         METIS_SetDefaultOptions(options);
         options[METIS_OPTION_UFACTOR] = 500; 
@@ -59,6 +60,7 @@ std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &grap
 
 else {
 // ---------------------MANUAL PARTITIONING----------------
+     start= MPI_Wtime(); 
         int local_size=num_vertices/num_parts;
         int rem = num_vertices%num_parts;
         int count= 1;
@@ -73,7 +75,7 @@ else {
 
             count++;
         }
-        end = MPI_Wtime();
+    end = MPI_Wtime();
         std::cout<< "Natural partitioning took " << end-start << " seconds" << std::endl; 
 // ---------------------END OF MANUAL PARTITIONING-------------------
 }
