@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iostream>
 
+namespace clipperplus
 {
     PartitioningMode partitioning_mode = PartitioningMode::METIS;
     double uFactor = 500;
