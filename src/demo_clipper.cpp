@@ -65,8 +65,9 @@ Eigen::MatrixXd read_adjacency_matrix(const std::string& filename) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>" << std::endl;
+
+    if (argc < 3) {
+        std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>  <0 for natural partitioning or 1 for using metis>" << std::endl;
         return 1;
     }
 
@@ -161,11 +162,18 @@ int main(int argc, char* argv[]) {
     }
 
     std::string filename = argv[1];
+    int use_metis =  0;
 
+    
     MPI_Init(NULL,NULL);
     int numproc,rank;
     MPI_Comm_size(MPI_COMM_WORLD,&numproc);
-     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+
+    if (rank == 0)
+    {
+        use_metis= std::stoi(argv[2]) ;
+    }
     // Load adjacency matrix
     Eigen::MatrixXd adj = read_adjacency_matrix(filename);
 
@@ -177,13 +185,11 @@ int main(int argc, char* argv[]) {
     clipperplus::Graph G(adj);
     std::pair<std::vector<int>, clipperplus::CERTIFICATE> result;
     start= MPI_Wtime(); 
-    if(numproc == 1) 
-    {
-	    result  = find_clique(G);
+    if(numproc == 1) {
+	   result  = find_clique(G);
     } 
-    else 
-    {
-        result  =  parallel_find_clique(G);
+    else {
+        result  =  parallel_find_clique(G,use_metis);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

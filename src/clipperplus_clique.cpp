@@ -5,104 +5,86 @@
 #include <chrono>
 #include <iostream>
 
+
+
+
+namespace clipperplus 
 {
-    PartitioningMode partitioning_mode = PartitioningMode::METIS;
-    double uFactor = 500;
-    double seedValue = 2;
-    bool enable_recursive = false;
 
-    bool enable_overlap = false;
-    OverlapMode overlap_mode = OverlapMode::NEIGHBOR;
-    double overlap_ratio = 0.1;
+std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph, int partitioning)
+{
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+   
 
-    std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph& graph)
-    {
+    int num_vertices = graph.size();
+    int num_parts = size;  // Each process handles one partition
+    std::vector<idx_t> partition(num_vertices, 0);
+    idx_t objval;
+    idx_t ncon = 1;
 
-        auto SALL = MPI_Wtime(); // std::chrono::high_resolution_clock::now();
-        double elapsed; //std::chrono::duration<double> elapsed;
+    std::vector<idx_t> xadj(num_vertices + 1, 0);
+    std::vector<idx_t> adjncy;
 
-        int rank, size;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-        int num_vertices = graph.size();
-        int num_parts = size;  // Each process handles one partition
-        std::vector<idx_t> partition(num_vertices, 0);
-        idx_t objval;
-        idx_t ncon = 1;
-
-        std::vector<idx_t> xadj(num_vertices + 1, 0);
-        std::vector<idx_t> adjncy;
-
-        // rank 0 partitions the graph
-        if (rank == 0) {
-            std::cout << "GRAPH SIZE : " << num_vertices << std::endl;
-            std::cout << "Args: Overlap Enabled? " << enable_overlap << " | Overlap Mode: " << static_cast<int>(overlap_mode) << " | Overlap Ratio: " << overlap_ratio << std::endl;
-            std::cout << "Args: Partitioning Mode " << static_cast<int>(partitioning_mode) << " | Recursive Enabled: " << enable_recursive << " | UFactor: " << uFactor << " | Seed: " << seedValue  << std::endl;
-            std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
-            for (int i = 0; i < num_vertices; ++i) {
-                const auto& neighbors = graph.neighbors(i);
-                vwgt[i] = neighbors.size();
-                xadj[i + 1] = xadj[i] + vwgt[i];
-                adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
-            }
-            switch (partitioning_mode)
-            {
-
-                case clipperplus::PartitioningMode::MANUAL: 
-                {
-                    // ---------------------MANUAL PARTITIONING----------------
-                    std::cout << "==MANUAL" << std::endl;
-                    int local_size = num_vertices / num_parts;
-                    int rem = num_vertices % num_parts;
-                    int count = 1;
-                    int part_count = 0;
-
-                    for (int i = 0; i < num_vertices; ++i) {
-                        if (count % local_size == 0) {
-                            part_count++;
-                            if (part_count == num_parts) { part_count = num_parts - 1; }
-                        }
-                        partition[i] = part_count;
-
-                        count++;
-                    }
-                }
-                    break;
-                case clipperplus::PartitioningMode::METIS:
-                {
-                    std::cout << "==METIS" << std::endl;
-                    // ---------------------METIS PARTITIONING---------------------------
-                    idx_t options[METIS_NOPTIONS];
-                    METIS_SetDefaultOptions(options);
-                    options[METIS_OPTION_UFACTOR] = uFactor;
-                    options[METIS_OPTION_SEED] = seedValue;
-
-                    int status;
-                    if (enable_recursive == true)
-                    {
-                        status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-                            nullptr, nullptr, nullptr, &num_parts,
-                            nullptr, nullptr, options, &objval, partition.data());
-                        std::cout << "==RECURSIVE" << std::endl;
-                    }
-                    else
-                    {
-                        status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
-                            vwgt.data(), nullptr, nullptr, &num_parts,
-                            nullptr, nullptr, options, &objval, partition.data());
-                    }
-                    std::cout << "==Metis objVal: " << objval << "\n";
-
-                    if (status != METIS_OK) {
-                        throw std::runtime_error("METIS partitioning failed");
-                    }
-                }
-                    break;
-                default:
-                    break;
-            }
+    // rank 0 partitions the graph
+    if (rank == 0) {
+        std::cout<< "GRAPH SIZE : " << num_vertices << std::endl;
+        std::cout<< "USE METIS?? : " << partitioning << std::endl;
+        std::vector<idx_t> vwgt(num_vertices); // helps METIS avoid splitting densely connected cores, improving the chances that cliques remain intact within partitions.
+        for (int i = 0; i < num_vertices; ++i) {
+            const auto &neighbors = graph.neighbors(i);
+            vwgt[i] = neighbors.size();
+            xadj[i + 1] = xadj[i] + vwgt[i];
+            adjncy.insert(adjncy.end(), neighbors.begin(), neighbors.end());
         }
+  double st, en;
+ 
+    if (partitioning == 1) {
+// ---------------------METIS PARTITIONING---------------------------
+     st= MPI_Wtime(); 
+        idx_t options[METIS_NOPTIONS];
+        METIS_SetDefaultOptions(options);
+        options[METIS_OPTION_UFACTOR] = 500; 
+        options[METIS_OPTION_SEED] = 42;
+
+        int status = METIS_PartGraphKway(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+                                         vwgt.data(), nullptr, nullptr, &num_parts, 
+                                         nullptr, nullptr, options, &objval, partition.data());
+        // int status = METIS_PartGraphRecursive(&num_vertices, &ncon, xadj.data(), adjncy.data(),
+        //                                  nullptr, nullptr, nullptr, &num_parts, 
+        //                                  nullptr, nullptr, options, &objval, partition.data());
+           std::cout << "OBJVAL: " << objval << std::endl;
+        if (status != METIS_OK) {
+            throw std::runtime_error("METIS partitioning failed");
+        }
+    en = MPI_Wtime(); 
+    std::cout<< "Metis partitioning took ---------------- " << en-st << " seconds" << std::endl; 
+// // ---------------------END OF METIS  PARTITIONING----------------
+    }
+
+
+else {
+// ---------------------MANUAL PARTITIONING----------------
+     st= MPI_Wtime(); 
+        int local_size=num_vertices/num_parts;
+        int rem = num_vertices%num_parts;
+        int count= 1;
+        int part_count=0;
+        
+        for (int i = 0; i < num_vertices; ++i) {
+            if (count%local_size == 0){     
+             part_count++;
+             if (part_count==num_parts){ part_count=num_parts-1;}
+            }
+            partition[i] = part_count;
+
+            count++;
+        }
+    en = MPI_Wtime();
+        std::cout<< "Natural partitioning took " << en-st << " seconds" << std::endl; 
+// ---------------------END OF MANUAL PARTITIONING-------------------
+}
 
         // Broadcast partition to all processes . no need to send csr
         MPI_Bcast(partition.data(), num_vertices, MPI_INT, 0, MPI_COMM_WORLD);

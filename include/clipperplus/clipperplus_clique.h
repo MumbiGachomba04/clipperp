@@ -45,6 +45,6 @@ extern OverlapMode overlap_mode;
 extern double overlap_ratio;
 
 std::pair<std::vector<Node>, CERTIFICATE> find_clique(const Graph &graph);
-std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph);
+std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph &graph,int partitioning);
 
 } 
