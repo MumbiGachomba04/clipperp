@@ -71,94 +71,80 @@ int main(int argc, char* argv[]) {
     }
 
     // ---------------------------------------------
-    // Command line argument parser:
-    /*  -p=0 : MANUAL partitioning mode
-        -p=1 : METIS partitioning mode
-        -r : Enable recursive metis
-        -u=<value> : Set uFactor value
-        -s=<value> : Set random seed value
-
-        -o : Enable overlapping -> Default -n
-        -g : Set overlap mode to GENERAL
-        -n : Set overlap mode to NEIGHBOR
-        -r=<value> : Set overlap ratio, e.g. -r=0.05 for %5
-    */
-    // ---------------------------------------------
-
-    for (int i = 2; i < argc; ++i) 
-    {
-        std::string arg = argv[i];
-
-        if (arg.rfind("-p=", 0) == 0 && arg.size() > 3 && isdigit(arg[3]))
-        {
-            int partitioningMode = arg[3] - '0';
-
-            if (partitioningMode == 1) // 1 for metis partitioning 
-            {
-                partitioning_mode = PartitioningMode::METIS;
-            }
-            else
-            {
-                partitioning_mode = PartitioningMode::MANUAL;
-            }
-        }
-        else if (arg.rfind("-p=", 0) == 0)
-        {
-            std::cerr << "Invalid partitioning mode format in: " << arg << std::endl;
-            return 1;
-        }
-        else if (arg.rfind("-u=", 0) == 0) {
-            try {
-                uFactor = std::stod(arg.substr(3));
-            }
-            catch (...) {
-                std::cerr << "Invalid uFactor format in: " << arg << std::endl;
-                return 1;
-            }
-        }
-        else if (arg.rfind("-s=", 0) == 0) {
-            try {
-                seedValue = std::stod(arg.substr(3));
-            }
-            catch (...) {
-                std::cerr << "Invalid seed format in: " << arg << std::endl;
-                return 1;
-            }
-        }
-        else if (arg == "-r") 
-        {
-            enable_recursive = true;
-        }
-        else if (arg == "-o") 
-        {
-            enable_overlap = true;
-            overlap_mode = OverlapMode::NEIGHBOR; // default
-        }
-        else if (arg == "-g") 
-        {
-            overlap_mode = OverlapMode::GENERAL;
-        }
-        else if (arg == "-n") 
-        {
-            overlap_mode = OverlapMode::NEIGHBOR;
-        }
-        else if (arg.rfind("-r=", 0) == 0) 
-        {
-            try 
-            {
-                overlap_ratio = std::stod(arg.substr(3));
-            }
-            catch (...) {
-                std::cerr << "Invalid overlap ratio format in: " << arg << std::endl;
-                return 1;
-            }
-        }
-        else 
-        {
-            std::cerr << "Unknown argument: " << arg << std::endl;
-            return 1;
-        }
-    }
+	// Command line argument parser:
+	/*  -pManual : MANUAL partitioning mode
+	    -pMetis : METIS partitioning mode
+	    -recursive : Enable recursive metis
+	    -uFactor=<value> : Set uFactor value
+	    -seed=<value> : Set random seed value
+	
+	    -oGeneral : Enable overlapping and set overlap mode to GENERAL
+	    -oNeighbor : Enable overlapping and set overlap mode to NEIGHBOR
+	    -oRatio=<value> : Set overlap ratio, e.g. -oRatio=0.05 for %5
+	*/
+	// ---------------------------------------------
+	
+	for (int i = 2; i < argc; ++i) 
+	{
+	    std::string arg = argv[i];
+	
+	    if (arg == "-pMetis")
+	    {
+	        partitioning_mode = PartitioningMode::METIS;
+	    }
+	    else if (arg == "-pManual")
+	    {
+	        partitioning_mode = PartitioningMode::MANUAL;
+	    }
+	    else if (arg.rfind("-uFactor=", 0) == 0) {
+	        try {
+	            uFactor = std::stod(arg.substr(9));
+	        }
+	        catch (...) {
+	            std::cerr << "Invalid uFactor format in: " << arg << std::endl;
+	            return 1;
+	        }
+	    }
+	    else if (arg.rfind("-seed=", 0) == 0) {
+	        try {
+	            seedValue = std::stod(arg.substr(6));
+	        }
+	        catch (...) {
+	            std::cerr << "Invalid seed format in: " << arg << std::endl;
+	            return 1;
+	        }
+	    }
+	    else if (arg == "-recursive")
+	    {
+	        enable_recursive = true;
+	    }
+	    else if (arg == "-oGeneral")
+	    {
+	        enable_overlap = true;
+	        overlap_mode = OverlapMode::GENERAL;
+	    }
+	    else if (arg == "-oNeighbor")
+	    {
+	        enable_overlap = true;
+	        overlap_mode = OverlapMode::NEIGHBOR;
+	    }
+	    else if (arg.rfind("-oRatio=", 0) == 0)
+	    {
+	        try
+	        {
+	            overlap_ratio = std::stod(arg.substr(8));
+	        }
+	        catch (...) {
+	            std::cerr << "Invalid overlap ratio format in: " << arg << std::endl;
+	            return 1;
+	        }
+	    }
+	    else
+	    {
+	        std::cerr << "Unknown argument: " << arg << std::endl;
+	        return 1;
+	    }
+	}
 
     std::string filename = argv[1];
 
