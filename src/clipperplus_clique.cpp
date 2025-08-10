@@ -14,7 +14,7 @@ namespace clipperplus
 
     bool enable_overlap = false;
     OverlapMode overlap_mode = OverlapMode::NEIGHBOR;
-    double overlap_ratio = 0.1;
+    double overlap_ratio = 0.0;
 
     std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph& graph)
     {
