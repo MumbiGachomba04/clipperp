@@ -60,13 +60,14 @@ namespace clipperplus
                     int part_count = 0;
 
                     for (int i = 0; i < num_vertices; ++i) {
-                        if (count % local_size == 0) {
+                        partition[i] = i % num_parts;
+                        /*if (count % local_size == 0) {
                             part_count++;
                             if (part_count == num_parts) { part_count = num_parts - 1; }
                         }
                         partition[i] = part_count;
 
-                        count++;
+                        count++;*/
                     }
                 }
                     break;
