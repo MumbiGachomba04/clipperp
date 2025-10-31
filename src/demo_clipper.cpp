@@ -66,8 +66,18 @@ Eigen::MatrixXd read_adjacency_matrix(const std::string& filename) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file>" << std::endl;
-        return 1;
+              std::cerr << "Usage: " << argv[0] << " <adjacency_matrix_file> [options]\n\n"
+              << "Options:\n"
+              << "  -pManual           : MANUAL partitioning mode\n"
+              << "  -pMetis            : METIS partitioning mode\n"
+              << "  -recursive         : Enable recursive METIS\n"
+              << "  -uFactor=<value>   : Set uFactor value\n"
+              << "  -seed=<value>      : Set random seed value\n"
+              << "  -oGeneral          : Enable overlapping and set overlap mode to GENERAL\n"
+              << "  -oNeighbor         : Enable overlapping and set overlap mode to NEIGHBOR\n"
+              << "  -oRatio=<value>    : Set overlap ratio, e.g. -oRatio=0.05 for 5%\n"
+              << std::endl;
+    return 1;
     }
 
     // ---------------------------------------------
