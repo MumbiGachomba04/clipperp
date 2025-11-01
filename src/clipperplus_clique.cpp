@@ -15,10 +15,10 @@ namespace clipperplus
     bool enable_overlap = false;
     OverlapMode overlap_mode = OverlapMode::NEIGHBOR;
     double overlap_ratio = 0.0;
+    int top_nodes = 0;
 
     std::pair<std::vector<Node>, CERTIFICATE> parallel_find_clique(const Graph& graph)
     {
-
         auto SALL = MPI_Wtime(); // std::chrono::high_resolution_clock::now();
         double elapsed; //std::chrono::duration<double> elapsed;
 
@@ -117,8 +117,7 @@ namespace clipperplus
             }
         }
 
-        int top_nodes;
-        if (enable_overlap == true)
+        if ((enable_overlap == true) && (overlap_ratio > 0))
         {
             switch (overlap_mode)
             {
